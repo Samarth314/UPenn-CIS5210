@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# NLTK data downloaded locally
+nltk_data/
+
+# Editors
+.vscode/
+.idea/
