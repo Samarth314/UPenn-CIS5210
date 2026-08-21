@@ -57,7 +57,7 @@ def n_queens_valid(board):
     return True
 
 
-
+# need to change all of the naming stuff for helper below
 def n_queens_solutions(n):
 
     grid = [0]*n
@@ -88,19 +88,36 @@ def n_queens_solutions(n):
 class LightsOutPuzzle(object):
 
     def __init__(self, board):
-        pass
+        self.lights_board = board
 
     def get_board(self):
-        pass
+        return self.lights_board
 
     def perform_move(self, row, col):
-        pass
+
+        self.lights_board[row][col] = not self.lights_board[row][col]
+
+        if (row - 1 >= 0):
+            self.lights_board[row - 1][col] = not self.lights_board[row - 1][col]
+        if (row + 1 < len(self.lights_board)):
+            self.lights_board[row + 1][col] = not self.lights_board[row + 1][col]
+        if (col - 1 >= 0):
+            self.lights_board[row][col - 1] = not self.lights_board[row][col - 1]
+        if (col + 1 < len(self.lights_board[0])):
+            self.lights_board[row][col + 1] = not self.lights_board[row][col + 1]
 
     def scramble(self):
-        pass
+        import random
+
+        rows, cols = len(self.lights_board), len(self.lights_board[0])
+
+        for row in range(rows):
+            for col in range(cols):
+                if random.random() < 0.5:
+                    self.perform_move(row, col)
 
     def is_solved(self):
-        pass
+        return not any(True in row for row in self.lights_board)
 
     def copy(self):
         pass
@@ -113,7 +130,7 @@ class LightsOutPuzzle(object):
 
 
 def create_puzzle(rows, cols):
-    pass
+    return LightsOutPuzzle([[False] * cols for _ in range(rows)])
 
 ############################################################
 # Section 3: Linear Disk Movement
