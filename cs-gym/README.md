@@ -27,11 +27,16 @@ stop typing, along with which problems you have solved. The header shows
 browsers, or closing the tab costs you nothing — the next load reads the file
 back.
 
-The file is plain JSON and safe to commit:
+The file is plain JSON and is tracked in git, so committing it versions your
+solutions along with the gym itself:
 
 ```bash
 git add cs-gym/progress.json && git commit -m "gym progress"
 ```
+
+Note that this repository is public, so committed solutions are publicly
+readable. Add `progress.json` to `cs-gym/.gitignore` if you would rather keep
+them local.
 
 Writes are **additive**: the server merges each snapshot into what is already
 saved rather than replacing the file, so a browser with empty storage can
@@ -39,7 +44,7 @@ never wipe out work saved from somewhere else. Per problem, the newer copy
 wins. The previous version is kept alongside as `progress.json.bak`.
 
 **Export** downloads a dated backup, **Import** restores one — use those to
-move progress between machines. If you run the gym under a plain
+move progress between machines without going through git. If you run the gym under a plain
 `python3 -m http.server` instead, there is no `/progress` endpoint; the header
 reads `browser only` and everything falls back to localStorage.
 

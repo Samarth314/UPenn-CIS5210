@@ -1,0 +1,35 @@
+{
+ "code": {
+  "amazons": "def n_amazons_valid(board):\n    pass\n\n\ndef n_amazons_helper(n, board):\n    pass\n\n\ndef n_amazons_solutions(n):\n    pass\n",
+  "blocked-queens": "def blocked_queens_valid(board, blocked):\n   \n    grid = []\n   \n    for i in range(0, len(board)):\n        row, col = i, board[i]\n\n        if (row, col) in blocked:\n            return False\n\n        grid.append((row, col))\n        \n    \n    for i in range(0, len(grid)):\n        row1 = grid[i][0]\n        col1 = grid[i][1]\n        \n        for j in range(i+1, len(grid)):\n            row2 = grid[j][0]\n            col2 = grid[j][1]\n            \n            if (row1 == row2) or (col1 == col2) or (abs(row1-row2) == abs(col1-col2)):\n                return False\n                \n    return True\n        \n        \ndef blocked_queens_helper(n, blocked, board):\n    if n == len(board):\n        if blocked_queens_valid(board, blocked):\n            solutions.append(board.copy())\n        return\n    \n    for col in range(0, len(board)):\n        board[n] = col\n        blocked_queens_helper(n+1, blocked, board)\n        board[n] = 0\n    \n\ndef blocked_queens_solutions(n, blocked):\n    global solutions\n    solutions = []\n    grid = [0]*n\n    \n    blocked_queens_helper(0, blocked, grid)\n    return solutions\n",
+  "cross-out": "import random\n\n\nclass CrossOutPuzzle(object):\n\n    def __init__(self, board):\n        self.board = board\n\n    def get_board(self):\n        return self.board\n\n    def perform_move(self, row, col):\n        for col1 in range(0, len(self.board[0])):\n            self.board[row][col1] = not self.board[row][col1]\n\n        for row1 in range(0, len(self.board)):\n            if row1 != row:\n                self.board[row1][col] = not self.board[row1][col]\n\n    def scramble(self):\n        import random\n        for row in range(0, len(self.board)):\n            for col in range(0, len(self.board[0])):\n                if random.random() < 0.5:\n                    self.perform_move(row, col)\n\n    def is_solved(self):\n        return not any([True in row for row in self.board])\n\n    def copy(self):\n        return CrossOutPuzzle([row.copy() for row in self.board])\n\n    def successors(self):\n        for row in range(0, len(self.board)):\n            for col in range(0, len(self.board[0])):\n                new_board_copy = self.copy()\n                new_board_copy.perform_move(row, col)\n                yield ((row, col), new_board_copy)\n\n    def find_solution(self):\n        from collections import deque\n        queue = deque()\n        \n        visited_set = set()\n        \n        queue.append((self.copy(), []))\n        \n        while queue:\n            entry, moves = queue.popleft()\n            entry_tuple = tuple(tuple(row) for row in entry.get_board())\n            \n            if entry_tuple in visited_set:\n                continue\n            \n            visited_set.add(entry_tuple)\n            \n            if entry.is_solved():\n                return moves\n                \n            for move, mod_board in entry.successors():\n                queue.append((mod_board, moves + [move]))\n            \ndef create_cross_puzzle(rows, cols):\n    return CrossOutPuzzle([[False]*cols for _ in range(rows)])\n    \n",
+  "jumping-disks": "def solve_jumping_disks(length, n):\n    pass\n",
+  "n-rooks-solutions": "def n_rooks_valid(board):\n    \n    grid = []\n    \n    for i in range(0, len(board)):\n        row, col = i, board[i]\n        \n        grid.append((row, col))\n    \n    for i in range(0, len(grid)):\n        row1, col1 = grid[i][0], grid[i][1]\n        \n        for j in range(i+1, len(grid)):\n            row2, col2 = grid[j][0], grid[j][1]\n            \n            if row1 == row2 or col1 == col2:\n                return False\n                \n    return True\n        \n\n\n\ndef n_rooks_solutions(n):\n    \n    solutions = []\n    grid = [0]*n\n    \n    def n_rooks_helper(n, board):\n        if n == len(board):\n            if n_rooks_valid(board):\n               solutions.append(board.copy())\n            return\n            \n        for col in range(len(board)):\n            board[n] = col\n            n_rooks_helper(n+1, board)\n            board[n] = 0\n    \n    n_rooks_helper(0, grid)\n    return solutions\n",
+  "n-rooks-valid": "def n_rooks_valid(board):\n    \n    grid = []\n    \n    for i in range(0, len(board)):\n        row, col = i, board[i]\n        \n        grid.append((row, col))\n    \n    for i in range(0, len(grid)):\n        row1, col1 = grid[i][0], grid[i][1]\n        \n        for j in range(i+1, len(grid)):\n            row2, col2 = grid[j][0], grid[j][1]\n            \n            if row1 == row2 or col1 == col2:\n                return False\n                \n    return True\n        \n",
+  "placement-counting": "import math\ndef num_placements_all(n, k):\n    return math.comb(n**2, k)\n\n\ndef num_placements_one_per_row(n):\n    return n**n\n\n\ndef num_placements_rooks(n):\n    return math.factorial(n)\n    \n    \n",
+  "toggle-ring": "# my work in progress\ndef solve_toggle_ring(lights):\n    from collections import deque\n    # [True, True, True, False]\n    n = len(lights)\n    queue = deque()\n    visited_set = set()\n    \n    queue.append((lights.copy(), []))\n    \n    while queue:\n        state, moves = queue.popleft()\n\n        # Goal check: all lights are off\n        if not any(state):\n            return moves\n\n        # Try pressing each index i from 0 to n-1\n        for i in range(n):\n            next_state = state.copy()\n            \n            # Toggle i-1, i, and i+1 with modulo wrapping\n            next_state[(i - 1) % n] = not next_state[(i - 1) % n]\n            next_state[i] = not next_state[i]\n            next_state[(i + 1) % n] = not next_state[(i + 1) % n]\n\n            state_tuple = tuple(next_state)\n            if state_tuple not in visited_set:\n                visited_set.add(state_tuple)\n                queue.append((next_state, moves + [i]))\n\n    return None \n",
+  "tri-state-lights": "import random\n\n\nclass TriStatePuzzle(object):\n\n    def __init__(self, board):\n        pass\n\n    def get_board(self):\n        pass\n\n    def perform_move(self, row, col):\n        pass\n\n    def scramble(self):\n        pass\n\n    def is_solved(self):\n        pass\n\n    def copy(self):\n        pass\n\n    def successors(self):\n        pass\n\n    def find_solution(self):\n        pass\n\n\ndef create_tri_puzzle(rows, cols):\n    pass\n"
+ },
+ "codeAt": {
+  "amazons": 0,
+  "blocked-queens": 1787631949958,
+  "cross-out": 1787633770657,
+  "jumping-disks": 1787623452415,
+  "n-rooks-solutions": 1787622601877,
+  "n-rooks-valid": 0,
+  "placement-counting": 0,
+  "toggle-ring": 1787636443361,
+  "tri-state-lights": 0
+ },
+ "last": "toggle-ring",
+ "solved": [
+  "blocked-queens",
+  "cross-out",
+  "n-rooks-solutions",
+  "n-rooks-valid",
+  "placement-counting",
+  "toggle-ring"
+ ],
+ "updated": "2026-08-25T05:40:43.000Z",
+ "version": 1
+}
