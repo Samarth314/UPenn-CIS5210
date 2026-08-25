@@ -1,0 +1,8 @@
+# Your own saved work in the gym: solutions in progress, per-problem code and
+# solved marks.  Left untracked because this repository is public -- committing
+# it would publish your working answers.  Remove this line if you want it kept.
+progress.json
+
+# Server scratch files
+progress.json.bak
+progress.json.tmp
