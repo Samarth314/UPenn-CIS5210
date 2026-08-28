@@ -1,0 +1,3 @@
+# Sidecar files written by serve.py: the previous save and the atomic-write
+# temp file.  progress.json itself IS tracked -- see README, "Saving your work".
+progress.json.*
