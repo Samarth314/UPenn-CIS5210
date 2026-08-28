@@ -1,0 +1,653 @@
+{
+ "tracks": [
+  {
+   "name": "Counting & Backtracking",
+   "blurb": "Size the space, then walk it with depth-first search."
+  },
+  {
+   "name": "Toggle Puzzles",
+   "blurb": "Grid states, commuting moves, and breadth-first graph search."
+  },
+  {
+   "name": "Movement Puzzles",
+   "blurb": "Pieces sliding around a board under awkward movement rules."
+  },
+  {
+   "name": "Classic Searches",
+   "blurb": "The textbook problems, stated so that BFS solves them directly."
+  }
+ ],
+ "problems": [
+  {
+   "id": "placement-counting",
+   "track": "Counting & Backtracking",
+   "title": "Sizing the Search Space",
+   "difficulty": "warmup",
+   "points": 5,
+   "blurb": "Count board configurations three ways and watch the search space collapse.",
+   "statement": "<p>Before writing a search, it pays to know how big the space you are\nsearching actually is. Implement three counting functions for an\n<em>n</em> &times; <em>n</em> board. All pieces are indistinguishable, and\nfor these functions pieces <strong>are</strong> allowed to attack each other\nunless stated otherwise.</p>\n\n<ul>\n  <li><code>num_placements_all(n, k)</code> &mdash; the number of ways to drop\n      <code>k</code> pieces onto the <code>n * n</code> squares, no\n      restrictions at all.</li>\n  <li><code>num_placements_one_per_row(n)</code> &mdash; the number of ways to\n      place <code>n</code> pieces so that every row holds exactly one.</li>\n  <li><code>num_placements_rooks(n)</code> &mdash; the number of ways to place\n      <code>n</code> <em>non-attacking</em> rooks, i.e. exactly one per row\n      <em>and</em> exactly one per column.</li>\n</ul>\n\n<p>Compare the three numbers for <code>n = 8</code>. The gap between the first\nand the second is the entire reason the rest of this track represents a board\nas a list of column indices.</p>",
+   "examples": ">>> num_placements_all(3, 3)\n84\n>>> num_placements_all(8, 8)\n4426165368\n>>> num_placements_one_per_row(3)\n27\n>>> num_placements_one_per_row(8)\n16777216\n>>> num_placements_rooks(3)\n6\n>>> num_placements_rooks(8)\n40320",
+   "starter": "def num_placements_all(n, k):\n    pass\n\n\ndef num_placements_one_per_row(n):\n    pass\n\n\ndef num_placements_rooks(n):\n    pass",
+   "hints": [
+    "Choosing k squares out of n*n with no order and no repetition is a binomial coefficient. math.comb does it exactly, without floats.",
+    "One piece per row means n independent choices of column, one per row.",
+    "Non-attacking rooks pin down a bijection from rows to columns -- that is exactly a permutation of the columns."
+   ],
+   "solution": "from math import comb, factorial\n\n\ndef num_placements_all(n, k):\n    return comb(n * n, k)\n\n\ndef num_placements_one_per_row(n):\n    return n ** n\n\n\ndef num_placements_rooks(n):\n    return factorial(n)",
+   "tests": [
+    {
+     "name": "num_placements_all matches n*n choose k",
+     "src": "from math import comb\nassert num_placements_all(3, 3) == comb(9, 3) == 84\nassert num_placements_all(8, 8) == comb(64, 8) == 4426165368\nassert num_placements_all(4, 0) == 1\nassert num_placements_all(4, 1) == 16\nassert num_placements_all(2, 4) == 1\nassert num_placements_all(2, 5) == 0"
+    },
+    {
+     "name": "num_placements_one_per_row counts n**n",
+     "src": "assert num_placements_one_per_row(1) == 1\nassert num_placements_one_per_row(3) == 27\nassert num_placements_one_per_row(8) == 16777216\nassert num_placements_one_per_row(12) == 12 ** 12"
+    },
+    {
+     "name": "num_placements_rooks counts permutations",
+     "src": "from math import factorial\nassert num_placements_rooks(1) == 1\nassert num_placements_rooks(3) == 6\nassert num_placements_rooks(8) == 40320\nassert num_placements_rooks(20) == factorial(20)"
+    },
+    {
+     "name": "results are exact integers, not floats",
+     "src": "for value in (num_placements_all(30, 4), num_placements_one_per_row(30),\n              num_placements_rooks(30)):\n    assert isinstance(value, int), \"expected an int, got %r\" % type(value)"
+    }
+   ]
+  },
+  {
+   "id": "n-rooks-valid",
+   "track": "Counting & Backtracking",
+   "title": "N-Rooks: Legal Position?",
+   "difficulty": "easy",
+   "points": 10,
+   "blurb": "The goal test for a rook placement, on complete and partial boards alike.",
+   "statement": "<p>A board is represented as a list of integers, where the <code>i</code>-th\nentry is the column of the rook sitting in row <code>i</code>. A list of\nlength <code>n</code> describes a complete board; a shorter list describes a\n<strong>partial</strong> board where only the first few rows have been\nfilled.</p>\n\n<p>Write <code>n_rooks_valid(board)</code>, which returns <code>True</code> if\nno rook can attack another and <code>False</code> otherwise. A rook attacks\nalong its row and its column only &mdash; diagonals are irrelevant, which is\nexactly what makes this an easier cousin of n-queens.</p>\n\n<p>Note that the representation already guarantees one rook per row, so the\nrow constraint is satisfied for free. The board size is <em>not</em> passed in;\ninfer whatever you need from the list itself.</p>",
+   "examples": ">>> n_rooks_valid([0, 0])\nFalse\n>>> n_rooks_valid([0, 1])\nTrue\n>>> n_rooks_valid([1, 0, 2])\nTrue\n>>> n_rooks_valid([2, 0, 2])\nFalse\n>>> n_rooks_valid([])\nTrue",
+   "starter": "def n_rooks_valid(board):\n    pass",
+   "hints": [
+    "Only one thing can go wrong: two rooks sharing a column.",
+    "A set of the columns is shorter than the board exactly when some column repeats.",
+    "The empty board and a one-rook board are both trivially valid -- make sure your code does not special-case them into a crash."
+   ],
+   "solution": "def n_rooks_valid(board):\n    return len(set(board)) == len(board)",
+   "tests": [
+    {
+     "name": "small hand-checked positions",
+     "src": "assert not n_rooks_valid([0, 0])\nassert n_rooks_valid([0, 1])\nassert n_rooks_valid([1, 0, 2])\nassert not n_rooks_valid([2, 0, 2])\nassert n_rooks_valid([3, 1, 0, 2])"
+    },
+    {
+     "name": "empty and single-row boards are valid",
+     "src": "assert n_rooks_valid([])\nassert n_rooks_valid([0])\nassert n_rooks_valid([7])"
+    },
+    {
+     "name": "diagonals do not matter",
+     "src": "assert n_rooks_valid([0, 1, 2, 3])\nassert n_rooks_valid([3, 2, 1, 0])\nassert n_rooks_valid([0, 1, 2])"
+    },
+    {
+     "name": "agrees with brute force on every board up to n=4",
+     "src": "from itertools import product\n\n\ndef _expected(board):\n    return len(set(board)) == len(board)\n\n\nfor n in range(1, 5):\n    for size in range(1, n + 1):\n        for board in product(range(n), repeat=size):\n            got = n_rooks_valid(list(board))\n            assert bool(got) == _expected(board), \\\n                \"n_rooks_valid(%r) returned %r\" % (list(board), got)"
+    }
+   ]
+  },
+  {
+   "id": "n-rooks-solutions",
+   "track": "Counting & Backtracking",
+   "title": "N-Rooks: Enumerate by DFS",
+   "difficulty": "medium",
+   "points": 15,
+   "blurb": "Depth-first search over rows, extending one partial board at a time.",
+   "statement": "<p>Write <code>n_rooks_solutions(n)</code>, returning a list of every valid\nplacement of <code>n</code> non-attacking rooks on an <code>n</code> &times;\n<code>n</code> board, using the list-of-columns representation from the\nprevious problem. Any ordering of the results is accepted.</p>\n\n<p>Implement it as a <strong>depth-first search</strong>: start from the empty\nboard and repeatedly extend the partial solution by placing a rook in the next\nempty row. A recursive helper makes this natural &mdash; a module-level\ngenerator, a closure that appends to a list, anything you like. Only\n<code>n_rooks_valid</code> and <code>n_rooks_solutions</code> are graded, so\nshape the recursion however you find clearest.</p>\n\n<p>Sanity check: there are exactly <code>n!</code> solutions, so\n<code>len(n_rooks_solutions(6)) == 720</code>. Resist the urge to call\n<code>itertools.permutations</code> &mdash; the point is the recursion, and the\nnext two problems have no such shortcut.</p>",
+   "examples": ">>> n_rooks_solutions(2)\n[[0, 1], [1, 0]]\n>>> n_rooks_solutions(3)\n[[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]\n>>> len(n_rooks_solutions(6))\n720",
+   "starter": "def n_rooks_valid(board):\n    pass\n\n\ndef n_rooks_solutions(n):\n    pass",
+   "hints": [
+    "Base case: len(board) == n means board is already a full solution, so yield it (yield a copy, not the list you keep mutating).",
+    "Recursive case: for each column, append it, recurse if the extended board is still valid, then pop it back off.",
+    "Checking validity of the whole board each step is O(n) work per node and still fast enough -- but carrying a set of used columns down the recursion is the version you want for n-queens later."
+   ],
+   "solution": "def n_rooks_valid(board):\n    return len(set(board)) == len(board)\n\n\ndef n_rooks_helper(n, board):\n    if len(board) == n:\n        yield list(board)\n        return\n    for col in range(n):\n        board.append(col)\n        if n_rooks_valid(board):\n            yield from n_rooks_helper(n, board)\n        board.pop()\n\n\ndef n_rooks_solutions(n):\n    return list(n_rooks_helper(n, []))",
+   "tests": [
+    {
+     "name": "returns a list of lists of the right shape",
+     "src": "sols = n_rooks_solutions(3)\nassert isinstance(sols, list), \"expected a list, got %r\" % type(sols)\nfor board in sols:\n    assert len(board) == 3\n    assert all(isinstance(c, int) for c in board)"
+    },
+    {
+     "name": "counts match n! for n = 0..6",
+     "src": "from math import factorial\nfor n in range(0, 7):\n    sols = n_rooks_solutions(n)\n    assert len(sols) == factorial(n), \\\n        \"n=%d gave %d solutions, expected %d\" % (n, len(sols), factorial(n))"
+    },
+    {
+     "name": "every board is a permutation, and none repeat",
+     "src": "from math import factorial\nfor n in range(1, 7):\n    seen = set()\n    for board in n_rooks_solutions(n):\n        assert sorted(board) == list(range(n)), \"%r is not a permutation\" % (board,)\n        seen.add(tuple(board))\n    assert len(seen) == factorial(n), \"n=%d produced duplicate boards\" % n"
+    },
+    {
+     "name": "each solution is its own list, not a shared reference",
+     "src": "sols = n_rooks_solutions(4)\nassert len(sols) == 24\nsols[0][0] = 99\nshared = sum(1 for board in sols if board[0] == 99)\nassert shared == 1,     \"%d boards changed at once -- append a copy, not the board you mutate\" % shared"
+    },
+    {
+     "name": "repeated calls do not leak state into each other",
+     "src": "first = [list(b) for b in n_rooks_solutions(4)]\nsecond = [list(b) for b in n_rooks_solutions(4)]\nassert first == second, \"two identical calls disagreed\"\nscratch = n_rooks_solutions(4)\nscratch[0][0] = 99\nscratch.append([0, 0, 0, 0])\nthird = [list(b) for b in n_rooks_solutions(4)]\nassert third == first, \"editing one result changed a later call\""
+    }
+   ]
+  },
+  {
+   "id": "blocked-queens",
+   "track": "Counting & Backtracking",
+   "title": "Queens on a Damaged Board",
+   "difficulty": "medium",
+   "points": 20,
+   "blurb": "N-queens, except some squares are rubble and cannot hold a queen.",
+   "statement": "<p>Same board representation as before: <code>board[i]</code> is the column of\nthe queen in row <code>i</code>, and a short list is a partial board. A queen\nattacks along its row, its column, and both diagonals.</p>\n\n<p>This time a set <code>blocked</code> of <code>(row, col)</code> tuples marks\nsquares that are damaged &mdash; no queen may stand on them, though queens\nattack straight <em>through</em> them as if they were empty.</p>\n\n<ul>\n  <li><code>blocked_queens_valid(board, blocked)</code> &mdash; <code>True</code>\n      if no queen attacks another and no queen sits on a blocked square.</li>\n  <li><code>blocked_queens_solutions(n, blocked)</code> &mdash; a list of every\n      complete valid board, found by depth-first search over the rows.</li>\n</ul>\n\n<p>With <code>blocked</code> empty this reduces to plain n-queens, so\n<code>len(blocked_queens_solutions(8, set())) == 92</code> is a free\nregression test. Note that a damaged board can easily have zero solutions;\nreturning <code>[]</code> is correct in that case.</p>",
+   "examples": ">>> blocked_queens_valid([0, 2], set())\nTrue\n>>> blocked_queens_valid([0, 2], {(1, 2)})\nFalse\n>>> blocked_queens_valid([1, 3], set())\nTrue\n>>> blocked_queens_solutions(4, set())\n[[1, 3, 0, 2], [2, 0, 3, 1]]\n>>> blocked_queens_solutions(4, {(0, 1)})\n[[2, 0, 3, 1]]\n>>> blocked_queens_solutions(4, {(0, 1), (0, 2)})\n[]",
+   "starter": "def blocked_queens_valid(board, blocked):\n    pass\n\n\ndef blocked_queens_helper(n, blocked, board):  # optional\n    pass\n\n\ndef blocked_queens_solutions(n, blocked):\n    pass",
+   "hints": [
+    "Two queens in rows i and j attack diagonally exactly when abs(board[i] - board[j]) == abs(i - j).",
+    "The blocked check is per-queen, not per-pair: for each row i, reject the board if (i, board[i]) is in blocked.",
+    "In the DFS you can skip a blocked square before you even append it, which prunes a little earlier than validating afterwards."
+   ],
+   "solution": "def blocked_queens_valid(board, blocked):\n    for i, col in enumerate(board):\n        if (i, col) in blocked:\n            return False\n        for j in range(i + 1, len(board)):\n            if col == board[j] or abs(col - board[j]) == j - i:\n                return False\n    return True\n\n\ndef blocked_queens_helper(n, blocked, board):\n    if len(board) == n:\n        yield list(board)\n        return\n    row = len(board)\n    for col in range(n):\n        if (row, col) in blocked:\n            continue\n        board.append(col)\n        if blocked_queens_valid(board, blocked):\n            yield from blocked_queens_helper(n, blocked, board)\n        board.pop()\n\n\ndef blocked_queens_solutions(n, blocked):\n    return list(blocked_queens_helper(n, blocked, []))",
+   "tests": [
+    {
+     "name": "validity on hand-checked boards",
+     "src": "assert blocked_queens_valid([0, 2], set())\nassert not blocked_queens_valid([0, 1], set())\nassert not blocked_queens_valid([0, 0], set())\nassert blocked_queens_valid([0, 3, 1], set())\nassert blocked_queens_valid([], set())\nassert blocked_queens_valid([0], set())"
+    },
+    {
+     "name": "blocked squares invalidate a board",
+     "src": "assert not blocked_queens_valid([0, 2], {(1, 2)})\nassert not blocked_queens_valid([0, 2], {(0, 0)})\nassert blocked_queens_valid([0, 2], {(0, 1), (1, 1), (2, 2)})\nassert not blocked_queens_valid([0], {(0, 0)})"
+    },
+    {
+     "name": "validity agrees with brute force on boards up to n=4",
+     "src": "from itertools import product\n\n\ndef _expected(board, blocked):\n    for i, col in enumerate(board):\n        if (i, col) in blocked:\n            return False\n        for j in range(i + 1, len(board)):\n            if col == board[j] or abs(col - board[j]) == j - i:\n                return False\n    return True\n\n\nfor blocked in (set(), {(0, 0)}, {(1, 2), (3, 3)}):\n    for size in range(0, 5):\n        for board in product(range(4), repeat=size):\n            got = blocked_queens_valid(list(board), blocked)\n            assert bool(got) == _expected(board, blocked), \\\n                \"blocked_queens_valid(%r, %r) -> %r\" % (list(board), blocked, got)"
+    },
+    {
+     "name": "undamaged boards reproduce the classic n-queens counts",
+     "src": "expected = {1: 1, 2: 0, 3: 0, 4: 2, 5: 10, 6: 4, 7: 40, 8: 92}\nfor n, count in expected.items():\n    got = len(blocked_queens_solutions(n, set()))\n    assert got == count, \"n=%d gave %d solutions, expected %d\" % (n, got, count)"
+    },
+    {
+     "name": "damaged boards match exhaustive enumeration",
+     "src": "from itertools import product\n\n\ndef _ok(board, blocked):\n    for i, col in enumerate(board):\n        if (i, col) in blocked:\n            return False\n        for j in range(i + 1, len(board)):\n            if col == board[j] or abs(col - board[j]) == j - i:\n                return False\n    return True\n\n\ncases = [(4, set()), (4, {(0, 1)}), (4, {(0, 1), (0, 2)}),\n         (5, {(2, 2)}), (5, {(0, 0), (1, 3), (4, 4)}), (6, {(0, 0)})]\nfor n, blocked in cases:\n    expect = {p for p in product(range(n), repeat=n) if _ok(list(p), blocked)}\n    got = [tuple(b) for b in blocked_queens_solutions(n, blocked)]\n    assert len(got) == len(set(got)), \"duplicate boards for n=%d, %r\" % (n, blocked)\n    assert set(got) == expect, \\\n        \"n=%d blocked=%r: missing %r, extra %r\" % (\n            n, blocked, sorted(expect - set(got))[:3], sorted(set(got) - expect)[:3])"
+    },
+    {
+     "name": "blocked is never mutated by the solver",
+     "src": "blocked = {(0, 1), (2, 3)}\nsnapshot = set(blocked)\nblocked_queens_solutions(5, blocked)\nassert blocked == snapshot, \"the solver modified the blocked set\""
+    }
+   ]
+  },
+  {
+   "id": "amazons",
+   "track": "Counting & Backtracking",
+   "title": "Amazons: Queens That Also Leap",
+   "difficulty": "hard",
+   "points": 25,
+   "blurb": "Add knight moves to the queen and almost every board becomes unsolvable.",
+   "statement": "<p>An <strong>amazon</strong> (sometimes called a superqueen) moves like a\nqueen <em>and</em> like a knight: it attacks along its row, its column, both\ndiagonals, and any square an L-shape away &mdash; two in one direction and one\nin the perpendicular direction.</p>\n\n<p>Using the same list-of-columns representation, write\n<code>n_amazons_valid(board)</code> and <code>n_amazons_solutions(n)</code>,\nenumerating every way to place <code>n</code> mutually non-attacking amazons on\nan <code>n</code> &times; <code>n</code> board via depth-first search.</p>\n\n<p>The extra constraint is brutal. Every board from 2 &times; 2 through\n9 &times; 9 has <em>zero</em> solutions, and the 10 &times; 10 board has\nexactly four. That makes this a good place to notice how much of the work is\ndone by pruning: a naive generate-and-test over all\n<code>10 ** 10</code> one-per-row boards would never finish, while a DFS that\nrejects a partial board as soon as it goes bad returns in well under a\nsecond.</p>",
+   "examples": ">>> n_amazons_valid([0, 2])\nFalse\n>>> n_amazons_valid([0, 3])\nTrue\n>>> n_amazons_solutions(1)\n[[0]]\n>>> n_amazons_solutions(5)\n[]\n>>> len(n_amazons_solutions(10))\n4",
+   "starter": "def n_amazons_valid(board):\n    pass\n\n\ndef n_amazons_helper(n, board):  # optional\n    pass\n\n\ndef n_amazons_solutions(n):\n    pass",
+   "hints": [
+    "Start from your n-queens validity check, then add one more rejection: a knight relationship between rows i and j.",
+    "With dr = abs(i - j) and dc = abs(board[i] - board[j]), a knight attack is (dr, dc) == (1, 2) or (2, 1).",
+    "Because every new queen only has to be checked against the queens already placed, you can validate just the last row instead of the whole board -- worth doing before you try n = 10."
+   ],
+   "solution": "def n_amazons_valid(board):\n    for i, col in enumerate(board):\n        for j in range(i + 1, len(board)):\n            dr = j - i\n            dc = abs(col - board[j])\n            if dc == 0 or dc == dr or (dr, dc) in ((1, 2), (2, 1)):\n                return False\n    return True\n\n\ndef n_amazons_helper(n, board):\n    if len(board) == n:\n        yield list(board)\n        return\n    row = len(board)\n    for col in range(n):\n        ok = True\n        for i, other in enumerate(board):\n            dr = row - i\n            dc = abs(col - other)\n            if dc == 0 or dc == dr or (dr, dc) in ((1, 2), (2, 1)):\n                ok = False\n                break\n        if ok:\n            board.append(col)\n            yield from n_amazons_helper(n, board)\n            board.pop()\n\n\ndef n_amazons_solutions(n):\n    return list(n_amazons_helper(n, []))",
+   "tests": [
+    {
+     "name": "validity on hand-checked boards",
+     "src": "assert n_amazons_valid([])\nassert n_amazons_valid([0])\nassert not n_amazons_valid([0, 0])\nassert not n_amazons_valid([0, 1])\nassert not n_amazons_valid([0, 2])\nassert n_amazons_valid([0, 3])\nassert not n_amazons_valid([0, 4, 1])"
+    },
+    {
+     "name": "knight relationships are rejected in both orientations",
+     "src": "assert not n_amazons_valid([2, 0])\nassert not n_amazons_valid([2, 4])\nassert not n_amazons_valid([0, 4, 1])\nassert not n_amazons_valid([1, 4, 0])\nassert n_amazons_valid([2, 5, 8])"
+    },
+    {
+     "name": "validity agrees with brute force on boards up to n=5",
+     "src": "from itertools import product\n\n\ndef _expected(board):\n    for i, col in enumerate(board):\n        for j in range(i + 1, len(board)):\n            dr, dc = j - i, abs(col - board[j])\n            if dc == 0 or dc == dr or (dr, dc) in ((1, 2), (2, 1)):\n                return False\n    return True\n\n\nfor size in range(0, 6):\n    for board in product(range(5), repeat=size):\n        got = n_amazons_valid(list(board))\n        assert bool(got) == _expected(board), \\\n            \"n_amazons_valid(%r) -> %r\" % (list(board), got)"
+    },
+    {
+     "name": "small boards have no solutions at all",
+     "src": "assert [list(b) for b in n_amazons_solutions(1)] == [[0]]\nfor n in range(2, 8):\n    got = n_amazons_solutions(n)\n    assert list(got) == [], \"n=%d should have no solutions, got %r\" % (n, got)"
+    },
+    {
+     "name": "the 10x10 board has exactly four solutions",
+     "src": "sols = [tuple(b) for b in n_amazons_solutions(10)]\nassert len(sols) == 4, \"expected 4 solutions on 10x10, got %d\" % len(sols)\nassert len(set(sols)) == 4, \"solutions are not distinct\"\nfor board in sols:\n    assert sorted(board) == list(range(10))\n    assert n_amazons_valid(list(board))"
+    },
+    {
+     "name": "every enumerated board is valid and complete",
+     "src": "for n in (8, 9, 10):\n    for board in n_amazons_solutions(n):\n        assert len(board) == n\n        assert n_amazons_valid(list(board))"
+    }
+   ]
+  },
+  {
+   "id": "cross-out",
+   "track": "Toggle Puzzles",
+   "title": "Cross Out",
+   "difficulty": "hard",
+   "points": 30,
+   "blurb": "Lights Out's louder sibling: one press flips an entire row and column.",
+   "statement": "<p><em>Cross Out</em> is played on an <code>m</code> &times; <code>n</code>\ngrid of lights, each either on (<code>True</code>) or off\n(<code>False</code>). Pressing a light toggles <strong>every light in its row\nand every light in its column</strong>. The pressed light itself toggles\nexactly once, not twice. The goal is to turn every light off.</p>\n\n<p>Build a <code>CrossOutPuzzle</code> class with these members, plus a\ntop-level <code>create_cross_puzzle(rows, cols)</code> that returns a puzzle of\nthe given size with every light off:</p>\n\n<ul>\n  <li><code>__init__(self, board)</code> and <code>get_board(self)</code> &mdash;\n      store and return a two-dimensional list of booleans.</li>\n  <li><code>perform_move(self, row, col)</code> &mdash; press one light,\n      mutating this puzzle in place.</li>\n  <li><code>scramble(self)</code> &mdash; press each light with probability\n      1/2, which guarantees the result is still solvable.</li>\n  <li><code>is_solved(self)</code> &mdash; are all lights off?</li>\n  <li><code>copy(self)</code> &mdash; a new puzzle with an independent board.</li>\n  <li><code>successors(self)</code> &mdash; yield\n      <code>((row, col), new_puzzle)</code> pairs, one per press, without\n      disturbing <code>self</code>.</li>\n  <li><code>find_solution(self)</code> &mdash; an <strong>optimal</strong> list\n      of <code>(row, col)</code> presses that clears the board, or\n      <code>None</code> if the board cannot be cleared.</li>\n</ul>\n\n<p><code>find_solution</code> must be a <strong>breadth-first graph\nsearch</strong>: never enqueue a board you have already visited or already\nqueued. Convert boards to tuples of tuples to use them as set members. Unlike\nLights Out, plenty of Cross Out boards are unreachable, so returning\n<code>None</code> is a case you have to get right, and you only discover it\nonce the frontier runs dry.</p>",
+   "examples": ">>> p = create_cross_puzzle(3, 4)\n>>> p.get_board()\n[[False, False, False, False],\n [False, False, False, False],\n [False, False, False, False]]\n>>> p.perform_move(1, 1)\n>>> p.get_board()\n[[False, True, False, False],\n [True, True, True, True],\n [False, True, False, False]]\n>>> p.is_solved()\nFalse\n>>> p = create_cross_puzzle(2, 2)\n>>> p.perform_move(0, 0)\n>>> p.get_board()\n[[True, True], [True, False]]\n>>> for move, new_p in p.successors():\n...     print(move, new_p.get_board())\n...\n(0, 0) [[False, False], [False, False]]\n(0, 1) [[False, False], [True, True]]\n(1, 0) [[False, True], [False, True]]\n(1, 1) [[True, False], [False, True]]\n>>> p.find_solution()\n[(0, 0)]",
+   "starter": "import random\n\n\nclass CrossOutPuzzle(object):\n\n    def __init__(self, board):\n        pass\n\n    def get_board(self):\n        pass\n\n    def perform_move(self, row, col):\n        pass\n\n    def scramble(self):\n        pass\n\n    def is_solved(self):\n        pass\n\n    def copy(self):\n        pass\n\n    def successors(self):\n        pass\n\n    def find_solution(self):\n        pass\n\n\ndef create_cross_puzzle(rows, cols):\n    pass",
+   "hints": [
+    "perform_move: flip the whole row, then flip the column but skip the cell you already flipped, otherwise the pressed light toggles twice and stays put.",
+    "copy() must build new inner lists. [list(row) for row in self.board] is enough; self.board[:] is not, since it shares the rows.",
+    "In the BFS, store tuple(tuple(row) for row in board) in a visited set and add a state to it at the moment you enqueue it, not when you pop it -- otherwise duplicates pile up in the frontier.",
+    "Queue entries should carry the move list that produced them, e.g. deque([(self, [])]). When the frontier empties with nothing solved, return None."
+   ],
+   "solution": "import random\nfrom collections import deque\n\n\nclass CrossOutPuzzle(object):\n\n    def __init__(self, board):\n        self.board = board\n        self.rows = len(board)\n        self.cols = len(board[0]) if board else 0\n\n    def get_board(self):\n        return self.board\n\n    def perform_move(self, row, col):\n        for j in range(self.cols):\n            self.board[row][j] = not self.board[row][j]\n        for i in range(self.rows):\n            if i != row:\n                self.board[i][col] = not self.board[i][col]\n\n    def scramble(self):\n        for row in range(self.rows):\n            for col in range(self.cols):\n                if random.random() < 0.5:\n                    self.perform_move(row, col)\n\n    def is_solved(self):\n        return all(not cell for row in self.board for cell in row)\n\n    def copy(self):\n        return CrossOutPuzzle([list(row) for row in self.board])\n\n    def successors(self):\n        for row in range(self.rows):\n            for col in range(self.cols):\n                child = self.copy()\n                child.perform_move(row, col)\n                yield (row, col), child\n\n    def _key(self):\n        return tuple(tuple(row) for row in self.board)\n\n    def find_solution(self):\n        if self.is_solved():\n            return []\n        visited = {self._key()}\n        frontier = deque([(self, [])])\n        while frontier:\n            puzzle, moves = frontier.popleft()\n            for move, child in puzzle.successors():\n                key = child._key()\n                if key in visited:\n                    continue\n                if child.is_solved():\n                    return moves + [move]\n                visited.add(key)\n                frontier.append((child, moves + [move]))\n        return None\n\n\ndef create_cross_puzzle(rows, cols):\n    return CrossOutPuzzle([[False] * cols for _ in range(rows)])",
+   "tests": [
+    {
+     "name": "construction, get_board and create_cross_puzzle",
+     "src": "board = [[True, False], [False, True]]\np = CrossOutPuzzle(board)\nassert p.get_board() == [[True, False], [False, True]]\nq = create_cross_puzzle(2, 3)\nassert q.get_board() == [[False] * 3 for _ in range(2)]\nassert len(create_cross_puzzle(4, 1).get_board()) == 4\nassert len(create_cross_puzzle(4, 1).get_board()[0]) == 1"
+    },
+    {
+     "name": "perform_move flips a full row and column, pressed cell once",
+     "src": "p = create_cross_puzzle(3, 4)\np.perform_move(1, 1)\nassert p.get_board() == [[False, True, False, False],\n                        [True, True, True, True],\n                        [False, True, False, False]], p.get_board()\np = create_cross_puzzle(2, 2)\np.perform_move(0, 0)\nassert p.get_board() == [[True, True], [True, False]], p.get_board()"
+    },
+    {
+     "name": "pressing the same light twice is a no-op",
+     "src": "p = create_cross_puzzle(3, 5)\np.perform_move(2, 3)\np.perform_move(2, 3)\nassert p.is_solved(), p.get_board()"
+    },
+    {
+     "name": "presses commute",
+     "src": "p = create_cross_puzzle(3, 4)\nq = create_cross_puzzle(3, 4)\nfor move in [(0, 1), (2, 2), (1, 0)]:\n    p.perform_move(*move)\nfor move in [(1, 0), (0, 1), (2, 2)]:\n    q.perform_move(*move)\nassert p.get_board() == q.get_board()"
+    },
+    {
+     "name": "is_solved",
+     "src": "assert create_cross_puzzle(3, 3).is_solved()\nassert not CrossOutPuzzle([[True, False], [False, False]]).is_solved()\nassert CrossOutPuzzle([[False, False], [False, False]]).is_solved()"
+    },
+    {
+     "name": "copy is deep and independent",
+     "src": "p = create_cross_puzzle(3, 3)\nc = p.copy()\nassert p.get_board() == c.get_board()\np.perform_move(1, 1)\nassert p.get_board() != c.get_board(), \"the copy changed with the original\"\nc.perform_move(0, 0)\nassert p.get_board() != c.get_board(), \"the original changed with the copy\""
+    },
+    {
+     "name": "successors yields one child per light, leaving self alone",
+     "src": "p = create_cross_puzzle(2, 2)\np.perform_move(0, 0)\nbefore = [list(r) for r in p.get_board()]\nfound = {move: [list(r) for r in child.get_board()] for move, child in p.successors()}\nassert p.get_board() == before, \"successors() mutated the original puzzle\"\nassert sorted(found) == [(0, 0), (0, 1), (1, 0), (1, 1)]\nassert found[(0, 0)] == [[False, False], [False, False]], found[(0, 0)]\nassert found[(0, 1)] == [[False, False], [True, True]], found[(0, 1)]\nassert found[(1, 0)] == [[False, True], [False, True]], found[(1, 0)]\nassert found[(1, 1)] == [[True, False], [False, True]], found[(1, 1)]\nfor i in range(2, 6):\n    q = create_cross_puzzle(i, i + 1)\n    assert len(list(q.successors())) == i * (i + 1)"
+    },
+    {
+     "name": "find_solution returns [] on an already-solved board",
+     "src": "assert create_cross_puzzle(3, 3).find_solution() == []\nassert create_cross_puzzle(2, 4).find_solution() == []"
+    },
+    {
+     "name": "find_solution actually clears the board",
+     "src": "cases = [[[True, True, True], [True, False, False], [True, False, False]], [[True, False, False], [False, False, True], [False, True, False]], [[True, False, False, True], [True, True, True, False], [False, True, True, True]]]\nfor board in cases:\n    p = CrossOutPuzzle([list(r) for r in board])\n    moves = p.find_solution()\n    assert moves is not None, \"no solution found for %r\" % (board,)\n    check = CrossOutPuzzle([list(r) for r in board])\n    for row, col in moves:\n        check.perform_move(row, col)\n    assert check.is_solved(), \"moves %r do not clear %r\" % (moves, board)"
+    },
+    {
+     "name": "find_solution is optimal, not merely correct",
+     "src": "cases = [([[True, True, True], [True, False, False], [True, False, False]], 1), ([[True, False, False], [False, False, True], [False, True, False]], 3), ([[True, False, False, True], [True, True, True, False], [False, True, True, True]], 2)]\nfor board, best in cases:\n    moves = CrossOutPuzzle([list(r) for r in board]).find_solution()\n    assert len(moves) == best, \\\n        \"solved %r in %d presses, optimum is %d\" % (board, len(moves), best)"
+    },
+    {
+     "name": "unreachable boards return None",
+     "src": "p = CrossOutPuzzle([[False, False, False], [False, False, False], [False, False, True]])\nassert p.find_solution() is None, \"that board cannot be cleared\""
+    },
+    {
+     "name": "scramble leaves the puzzle solvable",
+     "src": "import random\nrandom.seed(1234)\nsolvable = 0\nfor _ in range(12):\n    p = create_cross_puzzle(3, 3)\n    p.scramble()\n    moves = p.find_solution()\n    assert moves is not None, \"scramble produced an unsolvable board: %r\" % p.get_board()\n    for row, col in moves:\n        p.perform_move(row, col)\n    assert p.is_solved()\n    solvable += 1\nassert solvable == 12"
+    }
+   ]
+  },
+  {
+   "id": "tri-state-lights",
+   "track": "Toggle Puzzles",
+   "title": "Tri-State Lights",
+   "difficulty": "hard",
+   "points": 30,
+   "blurb": "Lights Out with three states per cell, so a press is no longer its own undo.",
+   "statement": "<p>Each cell of an <code>m</code> &times; <code>n</code> grid holds a number in\n<code>{0, 1, 2}</code>. Pressing a cell adds <code>1</code> modulo\n<code>3</code> to that cell and to its neighbours above, below, left and right\n&mdash; neighbours off the edge of the board are simply ignored. The board is\nsolved when every cell reads <code>0</code>.</p>\n\n<p>Build a <code>TriStatePuzzle</code> class with\n<code>__init__(self, board)</code>, <code>get_board(self)</code>,\n<code>perform_move(self, row, col)</code>, <code>scramble(self)</code>,\n<code>is_solved(self)</code>, <code>copy(self)</code>,\n<code>successors(self)</code> and <code>find_solution(self)</code>, plus a\ntop-level <code>create_tri_puzzle(rows, cols)</code> returning an all-zero\nboard. The contracts match Cross Out: <code>successors</code> yields\n<code>((row, col), new_puzzle)</code> pairs, and <code>find_solution</code>\nreturns an <em>optimal</em> list of presses via breadth-first graph search, or\n<code>None</code> when the board cannot be cleared.</p>\n\n<p>One press is no longer its own inverse: undoing a press takes two more\npresses of the same cell. That single change triples the state space, and it\nmeans a board one press away from solved is <em>two</em> moves from solved.\nYour visited set matters much more here than it did in binary Lights Out.</p>",
+   "examples": ">>> p = create_tri_puzzle(3, 3)\n>>> p.perform_move(1, 1)\n>>> p.get_board()\n[[0, 1, 0], [1, 1, 1], [0, 1, 0]]\n>>> p.perform_move(1, 1)\n>>> p.get_board()\n[[0, 2, 0], [2, 2, 2], [0, 2, 0]]\n>>> p.perform_move(1, 1)\n>>> p.is_solved()\nTrue\n>>> p = create_tri_puzzle(2, 2)\n>>> p.perform_move(0, 0)\n>>> p.get_board()\n[[1, 1], [1, 0]]\n>>> p.find_solution()\n[(0, 0), (0, 0)]",
+   "starter": "import random\n\n\nclass TriStatePuzzle(object):\n\n    def __init__(self, board):\n        pass\n\n    def get_board(self):\n        pass\n\n    def perform_move(self, row, col):\n        pass\n\n    def scramble(self):\n        pass\n\n    def is_solved(self):\n        pass\n\n    def copy(self):\n        pass\n\n    def successors(self):\n        pass\n\n    def find_solution(self):\n        pass\n\n\ndef create_tri_puzzle(rows, cols):\n    pass",
+   "hints": [
+    "Write the five offsets once -- (0, 0), (-1, 0), (1, 0), (0, -1), (0, 1) -- and bounds-check each before adding 1 modulo 3.",
+    "is_solved is now 'every cell == 0', not 'every cell is falsy' -- those happen to agree, but say what you mean.",
+    "The BFS is identical in shape to the binary version. Only the successor function changed, which is exactly the point: uninformed search does not care what the state means.",
+    "Solutions can be up to two presses per cell, so a 3x3 board can need a dozen moves. Make sure you mark states visited when enqueueing."
+   ],
+   "solution": "import random\nfrom collections import deque\n\n_OFFSETS = ((0, 0), (-1, 0), (1, 0), (0, -1), (0, 1))\n\n\nclass TriStatePuzzle(object):\n\n    def __init__(self, board):\n        self.board = board\n        self.rows = len(board)\n        self.cols = len(board[0]) if board else 0\n\n    def get_board(self):\n        return self.board\n\n    def perform_move(self, row, col):\n        for dr, dc in _OFFSETS:\n            i, j = row + dr, col + dc\n            if 0 <= i < self.rows and 0 <= j < self.cols:\n                self.board[i][j] = (self.board[i][j] + 1) % 3\n\n    def scramble(self):\n        for row in range(self.rows):\n            for col in range(self.cols):\n                for _ in range(random.randrange(3)):\n                    self.perform_move(row, col)\n\n    def is_solved(self):\n        return all(cell == 0 for row in self.board for cell in row)\n\n    def copy(self):\n        return TriStatePuzzle([list(row) for row in self.board])\n\n    def successors(self):\n        for row in range(self.rows):\n            for col in range(self.cols):\n                child = self.copy()\n                child.perform_move(row, col)\n                yield (row, col), child\n\n    def _key(self):\n        return tuple(tuple(row) for row in self.board)\n\n    def find_solution(self):\n        if self.is_solved():\n            return []\n        visited = {self._key()}\n        frontier = deque([(self, [])])\n        while frontier:\n            puzzle, moves = frontier.popleft()\n            for move, child in puzzle.successors():\n                key = child._key()\n                if key in visited:\n                    continue\n                if child.is_solved():\n                    return moves + [move]\n                visited.add(key)\n                frontier.append((child, moves + [move]))\n        return None\n\n\ndef create_tri_puzzle(rows, cols):\n    return TriStatePuzzle([[0] * cols for _ in range(rows)])",
+   "tests": [
+    {
+     "name": "construction and create_tri_puzzle",
+     "src": "p = TriStatePuzzle([[1, 0], [0, 2]])\nassert p.get_board() == [[1, 0], [0, 2]]\nassert create_tri_puzzle(2, 3).get_board() == [[0, 0, 0], [0, 0, 0]]\nassert create_tri_puzzle(1, 1).get_board() == [[0]]"
+    },
+    {
+     "name": "perform_move adds one mod three to the plus shape",
+     "src": "p = create_tri_puzzle(3, 3)\np.perform_move(1, 1)\nassert p.get_board() == [[0, 1, 0], [1, 1, 1], [0, 1, 0]], p.get_board()\np = create_tri_puzzle(3, 3)\np.perform_move(0, 0)\nassert p.get_board() == [[1, 1, 0], [1, 0, 0], [0, 0, 0]], p.get_board()\np = create_tri_puzzle(2, 4)\np.perform_move(1, 3)\nassert p.get_board() == [[0, 0, 0, 1], [0, 0, 1, 1]], p.get_board()"
+    },
+    {
+     "name": "three presses of one cell restore the board",
+     "src": "p = create_tri_puzzle(3, 3)\nfor _ in range(3):\n    p.perform_move(1, 2)\nassert p.is_solved(), p.get_board()\np = create_tri_puzzle(3, 3)\np.perform_move(1, 2)\np.perform_move(1, 2)\nassert not p.is_solved(), \"two presses should not cancel\""
+    },
+    {
+     "name": "is_solved and copy",
+     "src": "assert create_tri_puzzle(3, 3).is_solved()\nassert not TriStatePuzzle([[0, 0], [0, 2]]).is_solved()\np = create_tri_puzzle(2, 2)\nc = p.copy()\np.perform_move(0, 0)\nassert c.get_board() == [[0, 0], [0, 0]], \"copy shares state with the original\"\nassert p.get_board() != c.get_board()"
+    },
+    {
+     "name": "successors yields one child per cell and leaves self alone",
+     "src": "p = create_tri_puzzle(2, 2)\nbefore = [list(r) for r in p.get_board()]\nchildren = dict((m, [list(r) for r in c.get_board()]) for m, c in p.successors())\nassert p.get_board() == before, \"successors() mutated the original puzzle\"\nassert sorted(children) == [(0, 0), (0, 1), (1, 0), (1, 1)]\nassert children[(0, 0)] == [[1, 1], [1, 0]], children[(0, 0)]\nfor rows, cols in ((2, 3), (3, 4), (4, 4)):\n    assert len(list(create_tri_puzzle(rows, cols).successors())) == rows * cols"
+    },
+    {
+     "name": "find_solution clears a solved board with no moves",
+     "src": "assert create_tri_puzzle(2, 3).find_solution() == []\nassert create_tri_puzzle(3, 3).find_solution() == []"
+    },
+    {
+     "name": "find_solution clears real boards",
+     "src": "for board in [[[1, 1, 0], [1, 0, 0]], [[1, 1, 1], [1, 1, 1]], [[0, 0, 2], [1, 1, 0], [0, 1, 0]]]:\n    p = TriStatePuzzle([list(r) for r in board])\n    moves = p.find_solution()\n    assert moves is not None, \"no solution found for %r\" % (board,)\n    check = TriStatePuzzle([list(r) for r in board])\n    for row, col in moves:\n        check.perform_move(row, col)\n    assert check.is_solved(), \"moves %r do not clear %r\" % (moves, board)"
+    },
+    {
+     "name": "find_solution is optimal",
+     "src": "for board, best in [([[1, 1, 0], [1, 0, 0]], 2), ([[1, 1, 1], [1, 1, 1]], 4), ([[0, 0, 2], [1, 1, 0], [0, 1, 0]], 3)]:\n    moves = TriStatePuzzle([list(r) for r in board]).find_solution()\n    assert len(moves) == best, \\\n        \"solved %r in %d presses, optimum is %d\" % (board, len(moves), best)"
+    },
+    {
+     "name": "unsolvable boards return None",
+     "src": "p = TriStatePuzzle([[0, 0, 0], [0, 0, 1]])\nassert p.find_solution() is None, \"that board cannot be cleared\""
+    },
+    {
+     "name": "scramble leaves the puzzle solvable",
+     "src": "import random\nrandom.seed(7)\nfor _ in range(6):\n    p = create_tri_puzzle(2, 3)\n    p.scramble()\n    moves = p.find_solution()\n    assert moves is not None, \"scramble produced an unsolvable board: %r\" % p.get_board()\n    for row, col in moves:\n        p.perform_move(row, col)\n    assert p.is_solved()"
+    }
+   ]
+  },
+  {
+   "id": "toggle-ring",
+   "track": "Toggle Puzzles",
+   "title": "Toggle Ring",
+   "difficulty": "medium",
+   "points": 20,
+   "blurb": "Lights in a circle, three flipped per press. Some rings can never be cleared.",
+   "statement": "<p><code>n</code> lights sit in a <strong>circle</strong>, indexed\n<code>0</code> through <code>n - 1</code>. Pressing light <code>i</code>\ntoggles lights <code>i - 1</code>, <code>i</code> and <code>i + 1</code>, with\nthe indices wrapping around, so light <code>0</code> and light\n<code>n - 1</code> are neighbours. There are no edges to fall off.</p>\n\n<p>Write <code>solve_toggle_ring(lights)</code>, which takes a list of\nbooleans and returns a <strong>shortest</strong> list of indices to press that\nturns every light off, or <code>None</code> if no sequence does. Presses\ncommute and pressing twice cancels, so a shortest answer never repeats an\nindex; return the presses in any order. Use a breadth-first graph search over\nring states.</p>\n\n<p>Watch what happens when <code>n</code> is a multiple of three. On a ring of\n3 every press flips all three lights, so the only boards you can ever clear are\nall-on and all-off. Larger multiples of three are less obviously broken but\nstill leave most boards unreachable &mdash; a good reminder that \"search found\nnothing\" is a real answer, not a bug.</p>",
+   "examples": ">>> solve_toggle_ring([False, False, False, False])\n[]\n>>> solve_toggle_ring([True, True, True, False, False, False, False])\n[1]\n>>> solve_toggle_ring([True, False, False])\nNone\n>>> len(solve_toggle_ring([True, True, True]))\n1\n>>> len(solve_toggle_ring([True] * 8))\n8",
+   "starter": "def solve_toggle_ring(lights):\n    pass",
+   "hints": [
+    "Modular arithmetic does the wrapping for you: the press at i touches (i - 1) % n, i and (i + 1) % n.",
+    "Represent a state as a tuple of booleans so it can live in a visited set; convert the input list once at the start.",
+    "Queue entries pair a state with the list of presses that reached it. Return None only after the frontier is completely empty.",
+    "Since presses commute, you can cut the branching factor by only ever considering indices larger than the last one you pressed -- optional, but it turns an exponential frontier into 2**n subsets in order."
+   ],
+   "solution": "from collections import deque\n\n\ndef _press(lights, i):\n    n = len(lights)\n    bits = list(lights)\n    for j in ((i - 1) % n, i, (i + 1) % n):\n        bits[j] = not bits[j]\n    return tuple(bits)\n\n\ndef solve_toggle_ring(lights):\n    start = tuple(bool(light) for light in lights)\n    goal = (False,) * len(start)\n    if start == goal:\n        return []\n    visited = {start}\n    frontier = deque([(start, [])])\n    while frontier:\n        state, presses = frontier.popleft()\n        for i in range(len(start)):\n            nxt = _press(state, i)\n            if nxt in visited:\n                continue\n            if nxt == goal:\n                return presses + [i]\n            visited.add(nxt)\n            frontier.append((nxt, presses + [i]))\n    return None",
+   "tests": [
+    {
+     "name": "an already-dark ring needs no presses",
+     "src": "for n in range(1, 9):\n    assert solve_toggle_ring([False] * n) == []"
+    },
+    {
+     "name": "single-press boards are undone by one press",
+     "src": "for board, expected in [([True, True, False, False, False, False, True], 1), ([True, True, True, False, True, True, True, False], 2)]:\n    got = solve_toggle_ring(list(board))\n    assert got is not None and len(got) == expected, \\\n        \"%r solved in %r, optimum is %d\" % (board, got, expected)"
+    },
+    {
+     "name": "returned presses really clear the ring",
+     "src": "cases = [[True, True, False, False, False, False, True], [True, True, True, False, True, True, True, False], [False, True, True, False, False, True, False, False, True, False], [True, True, False, False, True, False, True, False, False, True, True, True]]\nfor board in cases:\n    presses = solve_toggle_ring(list(board))\n    assert presses is not None, \"no solution found for %r\" % (board,)\n    n = len(board)\n    bits = list(board)\n    for i in presses:\n        assert 0 <= i < n, \"press index %r out of range for n=%d\" % (i, n)\n        for j in ((i - 1) % n, i, (i + 1) % n):\n            bits[j] = not bits[j]\n    assert not any(bits), \"presses %r left %r\" % (presses, bits)"
+    },
+    {
+     "name": "solutions are minimal",
+     "src": "cases = [([True, True, False, False, False, False, True], 1), ([True, True, True, False, True, True, True, False], 2), ([False, True, True, False, False, True, False, False, True, False], 4), ([True, True, False, False, True, False, True, False, False, True, True, True], 5)]\nfor board, best in cases:\n    presses = solve_toggle_ring(list(board))\n    assert len(presses) == best, \\\n        \"%r solved in %d presses, optimum is %d\" % (board, len(presses), best)"
+    },
+    {
+     "name": "rings of three are almost entirely unsolvable",
+     "src": "assert solve_toggle_ring([True, False, False]) is None\nassert solve_toggle_ring([True, True, False]) is None\nassert solve_toggle_ring([False, True, False]) is None\nassert len(solve_toggle_ring([True, True, True])) == 1"
+    },
+    {
+     "name": "unsolvable boards on larger multiples of three",
+     "src": "assert solve_toggle_ring([True] + [False] * 5) is None\nassert solve_toggle_ring([True, True, False, False, False, False]) is None\nassert solve_toggle_ring([True] + [False] * 8) is None\nassert solve_toggle_ring([True] * 6) is not None"
+    },
+    {
+     "name": "every solvable ring up to n=7 is solved optimally",
+     "src": "from collections import deque\nfrom itertools import product\n\n\ndef _press(state, i):\n    n = len(state)\n    bits = list(state)\n    for j in ((i - 1) % n, i, (i + 1) % n):\n        bits[j] = not bits[j]\n    return tuple(bits)\n\n\nfor n in range(1, 8):\n    start = (False,) * n\n    dist = {start: 0}\n    queue = deque([start])\n    while queue:\n        state = queue.popleft()\n        for i in range(n):\n            nxt = _press(state, i)\n            if nxt not in dist:\n                dist[nxt] = dist[state] + 1\n                queue.append(nxt)\n    for bits in product((False, True), repeat=n):\n        got = solve_toggle_ring(list(bits))\n        if bits not in dist:\n            assert got is None, \"%r is unsolvable but got %r\" % (list(bits), got)\n            continue\n        assert got is not None, \"%r is solvable but got None\" % (list(bits),)\n        assert len(got) == dist[bits], \\\n            \"%r solved in %d, optimum is %d\" % (list(bits), len(got), dist[bits])\n        state = tuple(bits)\n        for i in got:\n            state = _press(state, i)\n        assert state == start, \"%r left the ring lit\" % (got,)"
+    }
+   ]
+  },
+  {
+   "id": "jumping-disks",
+   "track": "Movement Puzzles",
+   "title": "Jumping Disks",
+   "difficulty": "medium",
+   "points": 20,
+   "blurb": "Slide disks down a row, hopping over one or two of their neighbours.",
+   "statement": "<p>A row of <code>length</code> cells is numbered <code>0</code> through\n<code>length - 1</code>. Disks start on cells <code>0</code> through\n<code>n - 1</code>, and the goal is to get all <code>n</code> disks onto the\n<em>last</em> <code>n</code> cells. The disks are identical, so only the set of\noccupied cells matters, not which disk is where.</p>\n\n<p>From cell <code>i</code>, a disk may move to an empty cell that is:</p>\n<ul>\n  <li>one step away (<code>i - 1</code> or <code>i + 1</code>);</li>\n  <li>two steps away, if the single cell in between is occupied;</li>\n  <li>three steps away, if <em>both</em> cells in between are occupied.</li>\n</ul>\n\n<p>In other words a disk may hop over a run of one or two disks, but never over\na gap and never over three. Write\n<code>solve_jumping_disks(length, n)</code>, returning a\n<strong>shortest</strong> list of <code>(from, to)</code> moves that reaches\nthe goal, or <code>None</code> if the goal is unreachable. Use a breadth-first\ngraph search.</p>\n\n<p>Think about your state representation before you write the loop: a tuple of\nbooleans, a frozenset of occupied cells, and a sorted tuple of positions all\nwork, but only some of them are hashable and cheap to copy. That choice is\nworth more to your runtime than any micro-optimisation inside the loop.</p>",
+   "examples": ">>> solve_jumping_disks(4, 4)\n[]\n>>> solve_jumping_disks(4, 2)\n[(0, 2), (1, 3)]\n>>> solve_jumping_disks(5, 2)\n[(0, 2), (1, 3), (2, 4)]\n>>> len(solve_jumping_disks(6, 3))\n3\n>>> len(solve_jumping_disks(9, 4))\n10",
+   "starter": "def solve_jumping_disks(length, n):\n    pass",
+   "hints": [
+    "A state is just which cells are occupied. tuple(bool) of length `length` is hashable and easy to copy with a slice.",
+    "Generate successors by looping over occupied cells and over the six candidate targets (plus and minus 1, 2, 3), rejecting any target that is off the row or already occupied.",
+    "The 'jump over' condition is: every cell strictly between source and target is occupied. Write that as an all() over a range and all three step sizes collapse into one rule.",
+    "Standard BFS bookkeeping: a deque of (state, moves), a visited set, and a goal test on children before enqueueing them."
+   ],
+   "solution": "from collections import deque\n\n\ndef _successors(cells):\n    length = len(cells)\n    for i in range(length):\n        if not cells[i]:\n            continue\n        for step in (1, 2, 3):\n            for target in (i - step, i + step):\n                if not 0 <= target < length or cells[target]:\n                    continue\n                lo, hi = min(i, target), max(i, target)\n                if all(cells[k] for k in range(lo + 1, hi)):\n                    nxt = list(cells)\n                    nxt[i], nxt[target] = False, True\n                    yield (i, target), tuple(nxt)\n\n\ndef solve_jumping_disks(length, n):\n    start = tuple(i < n for i in range(length))\n    goal = tuple(i >= length - n for i in range(length))\n    if start == goal:\n        return []\n    visited = {start}\n    frontier = deque([(start, [])])\n    while frontier:\n        cells, moves = frontier.popleft()\n        for move, nxt in _successors(cells):\n            if nxt in visited:\n                continue\n            if nxt == goal:\n                return moves + [move]\n            visited.add(nxt)\n            frontier.append((nxt, moves + [move]))\n    return None",
+   "tests": [
+    {
+     "name": "a row that is already full needs no moves",
+     "src": "for n in range(1, 5):\n    assert solve_jumping_disks(n, n) == []"
+    },
+    {
+     "name": "moves are legal and reach the goal",
+     "src": "def _check(length, n, moves):\n    cells = [i < n for i in range(length)]\n    for src, dst in moves:\n        assert 0 <= src < length and 0 <= dst < length, \"off the row: %r\" % ((src, dst),)\n        assert cells[src], \"no disk on cell %d\" % src\n        assert not cells[dst], \"cell %d is occupied\" % dst\n        assert 1 <= abs(dst - src) <= 3, \"%r is not a legal step\" % ((src, dst),)\n        lo, hi = min(src, dst), max(src, dst)\n        assert all(cells[k] for k in range(lo + 1, hi)), \\\n            \"%r hops over an empty cell\" % ((src, dst),)\n        cells[src], cells[dst] = False, True\n    assert cells == [i >= length - n for i in range(length)], \\\n        \"final row %r is not the goal\" % (cells,)\n\n\nfor length, n in [(4, 2), (5, 2), (4, 3), (5, 3), (6, 3), (7, 3), (8, 4), (9, 4)]:\n    moves = solve_jumping_disks(length, n)\n    assert moves is not None, \"no solution for (%d, %d)\" % (length, n)\n    _check(length, n, moves)"
+    },
+    {
+     "name": "solutions are of minimal length",
+     "src": "for (length, n), best in {(4, 2): 2, (5, 2): 3, (4, 3): 1, (5, 3): 2, (6, 3): 3, (7, 3): 4, (8, 4): 8, (9, 4): 10}.items():\n    moves = solve_jumping_disks(length, n)\n    assert len(moves) == best, \\\n        \"(%d, %d) solved in %d moves, optimum is %d\" % (length, n, len(moves), best)"
+    },
+    {
+     "name": "small cases match the worked examples",
+     "src": "assert len(solve_jumping_disks(4, 2)) == 2\nassert len(solve_jumping_disks(5, 2)) == 3\nassert len(solve_jumping_disks(4, 3)) == 1"
+    },
+    {
+     "name": "moves are (from, to) tuples of plain ints",
+     "src": "moves = solve_jumping_disks(7, 3)\nassert isinstance(moves, list)\nfor move in moves:\n    assert isinstance(move, tuple) and len(move) == 2, \"bad move %r\" % (move,)\n    assert all(isinstance(x, int) for x in move), \"bad move %r\" % (move,)"
+    }
+   ]
+  },
+  {
+   "id": "toads-and-frogs",
+   "track": "Movement Puzzles",
+   "title": "Toads and Frogs",
+   "difficulty": "hard",
+   "points": 25,
+   "blurb": "Two columns of pieces must pass through each other through a single gap.",
+   "statement": "<p>A row of <code>2n + 1</code> cells holds <code>n</code> <strong>toads</strong>\non the left (cells <code>0 .. n-1</code>), a single empty cell in the middle\n(cell <code>n</code>), and <code>n</code> <strong>frogs</strong> on the right\n(cells <code>n+1 .. 2n</code>).</p>\n\n<p>Toads only ever move right; frogs only ever move left. Neither species can\nback up. A piece may:</p>\n<ul>\n  <li><strong>slide</strong> one cell forward, if that cell is empty; or</li>\n  <li><strong>jump</strong> two cells forward, if the cell it passes over holds\n      a piece of the <em>other</em> species and the landing cell is empty.</li>\n</ul>\n<p>A piece may never jump over one of its own kind.</p>\n\n<p>Write <code>solve_toads_and_frogs(n)</code>, returning a shortest list of\n<code>(from, to)</code> moves that ends with the frogs on the left, the toads\non the right, and the gap back in the middle. Use a breadth-first graph\nsearch.</p>\n\n<p>The optimum is <code>n * n + 2 * n</code> moves, which is a satisfying thing\nto confirm empirically. It also grows fast enough that <code>n = 5</code> is\nalready a decent stress test of your visited set: get it wrong and the search\nre-expands the same positions until it crawls.</p>",
+   "examples": ">>> solve_toads_and_frogs(1)\n[(0, 1), (2, 0), (1, 2)]\n>>> len(solve_toads_and_frogs(2))\n8\n>>> len(solve_toads_and_frogs(3))\n15\n>>> len(solve_toads_and_frogs(4))\n24",
+   "starter": "def solve_toads_and_frogs(n):\n    pass",
+   "hints": [
+    "Represent the row as a tuple of characters, say 'T', 'F' and '.', so states are hashable and printing one tells you instantly what went wrong.",
+    "Direction is a property of the piece, not the move: step = +1 for a toad and -1 for a frog, then slide is i + step and jump is i + 2 * step.",
+    "The jump condition needs the middle cell to hold the OTHER species. Allowing jumps over your own kind quietly makes the puzzle easier and your move count too small.",
+    "The goal is the exact mirror of the start: 'F' * n + '.' + 'T' * n."
+   ],
+   "solution": "from collections import deque\n\n\ndef _successors(cells):\n    length = len(cells)\n    for i, piece in enumerate(cells):\n        if piece == '.':\n            continue\n        step = 1 if piece == 'T' else -1\n        other = 'F' if piece == 'T' else 'T'\n        one = i + step\n        if 0 <= one < length and cells[one] == '.':\n            nxt = list(cells)\n            nxt[one], nxt[i] = piece, '.'\n            yield (i, one), tuple(nxt)\n        two = i + 2 * step\n        if 0 <= two < length and cells[two] == '.' and cells[one] == other:\n            nxt = list(cells)\n            nxt[two], nxt[i] = piece, '.'\n            yield (i, two), tuple(nxt)\n\n\ndef solve_toads_and_frogs(n):\n    start = tuple(['T'] * n + ['.'] + ['F'] * n)\n    goal = tuple(['F'] * n + ['.'] + ['T'] * n)\n    if start == goal:\n        return []\n    visited = {start}\n    frontier = deque([(start, [])])\n    while frontier:\n        cells, moves = frontier.popleft()\n        for move, nxt in _successors(cells):\n            if nxt in visited:\n                continue\n            if nxt == goal:\n                return moves + [move]\n            visited.add(nxt)\n            frontier.append((nxt, moves + [move]))\n    return None",
+   "tests": [
+    {
+     "name": "n = 0 is already solved",
+     "src": "assert solve_toads_and_frogs(0) == []"
+    },
+    {
+     "name": "every move obeys the direction and jump rules",
+     "src": "def _check(n, moves):\n    cells = ['T'] * n + ['.'] + ['F'] * n\n    for src, dst in moves:\n        assert 0 <= src < len(cells) and 0 <= dst < len(cells), \"off the row\"\n        piece = cells[src]\n        assert piece in 'TF', \"no piece on cell %d\" % src\n        assert cells[dst] == '.', \"cell %d is not empty\" % dst\n        step = dst - src\n        forward = 1 if piece == 'T' else -1\n        assert step in (forward, 2 * forward), \\\n            \"%s on cell %d cannot move to %d\" % (piece, src, dst)\n        if abs(step) == 2:\n            middle = cells[src + forward]\n            assert middle not in ('.', piece), \\\n                \"jump from %d must pass over the other species, saw %r\" % (src, middle)\n        cells[dst], cells[src] = piece, '.'\n    assert cells == ['F'] * n + ['.'] + ['T'] * n, \"ended at %r\" % (''.join(cells),)\n\n\nfor n in range(1, 5):\n    moves = solve_toads_and_frogs(n)\n    assert moves is not None, \"no solution for n=%d\" % n\n    _check(n, moves)"
+    },
+    {
+     "name": "solution length is exactly n*n + 2*n",
+     "src": "for n, best in {1: 3, 2: 8, 3: 15, 4: 24, 5: 35}.items():\n    assert best == n * n + 2 * n\n    moves = solve_toads_and_frogs(n)\n    assert len(moves) == best, \\\n        \"n=%d solved in %d moves, optimum is %d\" % (n, len(moves), best)"
+    },
+    {
+     "name": "n = 1 has one of the two mirror solutions",
+     "src": "moves = [tuple(m) for m in solve_toads_and_frogs(1)]\nassert moves in ([(0, 1), (2, 0), (1, 2)], [(2, 1), (0, 2), (1, 0)]), moves"
+    },
+    {
+     "name": "pieces never move backwards",
+     "src": "for n in (2, 3, 4):\n    cells = ['T'] * n + ['.'] + ['F'] * n\n    for src, dst in solve_toads_and_frogs(n):\n        piece = cells[src]\n        assert (dst > src) == (piece == 'T'), \\\n            \"n=%d: %s moved the wrong way (%d -> %d)\" % (n, piece, src, dst)\n        cells[dst], cells[src] = piece, '.'"
+    }
+   ]
+  },
+  {
+   "id": "sliding-tiles",
+   "track": "Movement Puzzles",
+   "title": "Mini Sliding Tiles",
+   "difficulty": "medium",
+   "points": 20,
+   "blurb": "The 8-puzzle's small cousin, where half of all boards are unsolvable.",
+   "statement": "<p>A sliding-tile board is a tuple of tuples of integers. Tile <code>0</code>\nis the blank. A move slides one tile that is orthogonally adjacent to the blank\ninto the blank's square. The goal state numbers the tiles\n<code>1, 2, 3, ...</code> in row-major order with the blank last, so for a\n2 &times; 3 board the goal is <code>((1, 2, 3), (4, 5, 0))</code>.</p>\n\n<p>Write <code>solve_sliding_puzzle(board)</code>, returning a\n<strong>shortest</strong> list of moves that reaches the goal, where each move\nis the <code>(row, col)</code> of the tile being slid <em>at the moment it\nmoves</em>. Return <code>None</code> if the board cannot be solved, and\n<code>[]</code> if it is already solved. Use a breadth-first graph search.</p>\n\n<p>Exactly half of all scrambled boards are unsolvable, and BFS discovers this\nthe expensive way: by exhausting every state reachable from the start. That is\nthe honest cost of an uninformed search, and it is why the next unit is about\nheuristics.</p>",
+   "examples": ">>> solve_sliding_puzzle(((1, 2, 3), (4, 5, 0)))\n[]\n>>> solve_sliding_puzzle(((1, 2, 3), (4, 0, 5)))\n[(1, 2)]\n>>> solve_sliding_puzzle(((1, 2, 3), (0, 4, 5)))\n[(1, 1), (1, 2)]\n>>> solve_sliding_puzzle(((2, 1, 3), (4, 5, 0))) is None\nTrue\n>>> len(solve_sliding_puzzle(((4, 1, 2), (0, 5, 3))))\n4",
+   "starter": "def solve_sliding_puzzle(board):\n    pass",
+   "hints": [
+    "Do not hard-code the board size. rows = len(board) and cols = len(board[0]) let the same code solve 2x2, 2x3 and 3x2.",
+    "Find the blank once per state, then the successors are the up to four in-bounds neighbours of the blank -- each swap gives you both the child state and the (row, col) of the tile that moved.",
+    "Keep states as tuples of tuples so they hash. Convert lists to tuples once, at the top of the function.",
+    "The unsolvable half is detected for free: BFS drains its frontier and falls out of the while loop. Just make sure you return None there instead of falling off the end and returning it by accident."
+   ],
+   "solution": "from collections import deque\n\n\ndef _successors(board):\n    rows, cols = len(board), len(board[0])\n    br, bc = next((r, c) for r in range(rows) for c in range(cols)\n                  if board[r][c] == 0)\n    for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n        r, c = br + dr, bc + dc\n        if 0 <= r < rows and 0 <= c < cols:\n            grid = [list(row) for row in board]\n            grid[br][bc], grid[r][c] = grid[r][c], 0\n            yield (r, c), tuple(tuple(row) for row in grid)\n\n\ndef solve_sliding_puzzle(board):\n    start = tuple(tuple(row) for row in board)\n    rows, cols = len(start), len(start[0])\n    values = list(range(1, rows * cols)) + [0]\n    goal = tuple(tuple(values[r * cols:(r + 1) * cols]) for r in range(rows))\n    if start == goal:\n        return []\n    visited = {start}\n    frontier = deque([(start, [])])\n    while frontier:\n        state, moves = frontier.popleft()\n        for move, nxt in _successors(state):\n            if nxt in visited:\n                continue\n            if nxt == goal:\n                return moves + [move]\n            visited.add(nxt)\n            frontier.append((nxt, moves + [move]))\n    return None",
+   "tests": [
+    {
+     "name": "solved boards of several shapes need no moves",
+     "src": "assert solve_sliding_puzzle(((1, 2, 3), (4, 5, 0))) == []\nassert solve_sliding_puzzle(((1, 2), (3, 0))) == []\nassert solve_sliding_puzzle(((1, 2), (3, 4), (5, 0))) == []"
+    },
+    {
+     "name": "one and two move boards",
+     "src": "assert solve_sliding_puzzle(((1, 2, 3), (4, 0, 5))) == [(1, 2)]\nassert solve_sliding_puzzle(((1, 2, 3), (0, 4, 5))) == [(1, 1), (1, 2)]\nassert solve_sliding_puzzle(((1, 2, 0), (4, 5, 3))) == [(1, 2)]"
+    },
+    {
+     "name": "moves are legal and reach the goal",
+     "src": "def _check(board, moves):\n    grid = [list(row) for row in board]\n    rows, cols = len(grid), len(grid[0])\n    for r, c in moves:\n        assert 0 <= r < rows and 0 <= c < cols, \"move %r off the board\" % ((r, c),)\n        assert grid[r][c] != 0, \"move %r slides the blank itself\" % ((r, c),)\n        br, bc = [(i, j) for i in range(rows) for j in range(cols)\n                  if grid[i][j] == 0][0]\n        assert abs(br - r) + abs(bc - c) == 1, \\\n            \"tile %r is not next to the blank at %r\" % ((r, c), (br, bc))\n        grid[br][bc], grid[r][c] = grid[r][c], 0\n    values = list(range(1, rows * cols)) + [0]\n    goal = [values[i * cols:(i + 1) * cols] for i in range(rows)]\n    assert grid == goal, \"ended at %r\" % (grid,)\n\n\nfor board in [[[0, 2, 3], [1, 4, 5]], [[5, 0, 2], [1, 4, 3]], [[2, 3], [1, 4], [5, 0]]]:\n    board = tuple(tuple(row) for row in board)\n    moves = solve_sliding_puzzle(board)\n    assert moves is not None, \"no solution for %r\" % (board,)\n    _check(board, moves)"
+    },
+    {
+     "name": "solutions are optimal",
+     "src": "cases = [([[0, 2, 3], [1, 4, 5]], 3), ([[5, 0, 2], [1, 4, 3]], 6), ([[2, 3], [1, 4], [5, 0]], 6)]\nfor board, best in cases:\n    moves = solve_sliding_puzzle(tuple(tuple(row) for row in board))\n    assert len(moves) == best, \\\n        \"%r solved in %d moves, optimum is %d\" % (board, len(moves), best)"
+    },
+    {
+     "name": "unsolvable boards return None",
+     "src": "assert solve_sliding_puzzle(((2, 1, 3), (4, 5, 0))) is None\nassert solve_sliding_puzzle(((1, 2, 3), (5, 4, 0))) is None\nassert solve_sliding_puzzle(((2, 1), (3, 0))) is None"
+    },
+    {
+     "name": "agrees with exhaustive search on a sample of 2x3 boards",
+     "src": "from collections import deque\nfrom itertools import permutations\n\ngoal = ((1, 2, 3), (4, 5, 0))\n\n\ndef _children(state):\n    br, bc = [(r, c) for r in range(2) for c in range(3) if state[r][c] == 0][0]\n    for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n        r, c = br + dr, bc + dc\n        if 0 <= r < 2 and 0 <= c < 3:\n            grid = [list(row) for row in state]\n            grid[br][bc], grid[r][c] = grid[r][c], 0\n            yield tuple(tuple(row) for row in grid)\n\n\ndist = {goal: 0}\nqueue = deque([goal])\nwhile queue:\n    state = queue.popleft()\n    for nxt in _children(state):\n        if nxt not in dist:\n            dist[nxt] = dist[state] + 1\n            queue.append(nxt)\n\nchecked = 0\nfor index, perm in enumerate(permutations(range(6))):\n    if index % 9:\n        continue\n    board = (perm[:3], perm[3:])\n    got = solve_sliding_puzzle(board)\n    if board not in dist:\n        assert got is None, \"%r is unsolvable but got %r\" % (board, got)\n    else:\n        assert got is not None and len(got) == dist[board], \\\n            \"%r solved in %r, optimum is %d\" % (board, got, dist[board])\n    checked += 1\nassert checked == 80"
+    }
+   ]
+  },
+  {
+   "id": "water-jugs",
+   "track": "Classic Searches",
+   "title": "Water Jugs",
+   "difficulty": "medium",
+   "points": 20,
+   "blurb": "Unmarked jugs, three actions, and a target volume to hit exactly.",
+   "statement": "<p>You are given a tuple of jug <code>capacities</code> in litres. Every jug\nstarts empty, the jugs have no markings, and you have unlimited water and a\ndrain. Three actions are available:</p>\n\n<ul>\n  <li><code>(\"fill\", i)</code> &mdash; fill jug <code>i</code> to its capacity.</li>\n  <li><code>(\"empty\", i)</code> &mdash; pour jug <code>i</code> out.</li>\n  <li><code>(\"pour\", i, j)</code> &mdash; pour jug <code>i</code> into jug\n      <code>j</code> until <code>j</code> is full or <code>i</code> is empty.</li>\n</ul>\n\n<p>Write <code>solve_water_jugs(capacities, target)</code>, returning a\nshortest list of actions after which <strong>some</strong> jug holds exactly\n<code>target</code> litres, or <code>None</code> if that is impossible. Use a\nbreadth-first graph search over tuples of jug contents.</p>\n\n<p>An action that changes nothing &mdash; filling a full jug, emptying an empty\none, pouring into a jug that is already full &mdash; is a wasted branch. You\ncan either skip generating it or let the visited set absorb it; try both and\nwatch what happens to the number of states you expand.</p>",
+   "examples": ">>> solve_water_jugs((3, 5), 0)\n[]\n>>> solve_water_jugs((3, 5), 3)\n[('fill', 0)]\n>>> len(solve_water_jugs((3, 5), 4))\n6\n>>> solve_water_jugs((2, 6), 5) is None\nTrue\n>>> len(solve_water_jugs((4, 9), 6))\n8",
+   "starter": "def solve_water_jugs(capacities, target):\n    pass",
+   "hints": [
+    "A state is a tuple of current volumes, one per jug -- already hashable, so it drops straight into a visited set.",
+    "The amount that actually moves in a pour is min(state[i], capacities[j] - state[j]).",
+    "The goal test is 'target in state', not 'state[0] == target'. Any jug counts.",
+    "target is reachable only if it is a multiple of the gcd of the capacities and no larger than the biggest jug -- worth knowing, but let the search discover it so you also get the move list."
+   ],
+   "solution": "from collections import deque\n\n\ndef _successors(state, capacities):\n    for i, amount in enumerate(state):\n        if amount < capacities[i]:\n            nxt = list(state)\n            nxt[i] = capacities[i]\n            yield (\"fill\", i), tuple(nxt)\n        if amount > 0:\n            nxt = list(state)\n            nxt[i] = 0\n            yield (\"empty\", i), tuple(nxt)\n        for j in range(len(state)):\n            if i == j or amount == 0 or state[j] == capacities[j]:\n                continue\n            moved = min(amount, capacities[j] - state[j])\n            nxt = list(state)\n            nxt[i] -= moved\n            nxt[j] += moved\n            yield (\"pour\", i, j), tuple(nxt)\n\n\ndef solve_water_jugs(capacities, target):\n    start = tuple(0 for _ in capacities)\n    if target in start:\n        return []\n    visited = {start}\n    frontier = deque([(start, [])])\n    while frontier:\n        state, actions = frontier.popleft()\n        for action, nxt in _successors(state, capacities):\n            if nxt in visited:\n                continue\n            if target in nxt:\n                return actions + [action]\n            visited.add(nxt)\n            frontier.append((nxt, actions + [action]))\n    return None",
+   "tests": [
+    {
+     "name": "an empty jug already holds zero litres",
+     "src": "assert solve_water_jugs((3, 5), 0) == []\nassert solve_water_jugs((7,), 0) == []"
+    },
+    {
+     "name": "one fill is enough when the target is a capacity",
+     "src": "assert solve_water_jugs((3, 5), 3) == [(\"fill\", 0)]\nassert solve_water_jugs((3, 5), 5) == [(\"fill\", 1)]"
+    },
+    {
+     "name": "actions are legal and end on the target",
+     "src": "def _replay(capacities, actions):\n    state = [0] * len(capacities)\n    for action in actions:\n        action = tuple(action)\n        kind = action[0]\n        if kind == \"fill\":\n            (_, i) = action\n            state[i] = capacities[i]\n        elif kind == \"empty\":\n            (_, i) = action\n            state[i] = 0\n        elif kind == \"pour\":\n            (_, i, j) = action\n            moved = min(state[i], capacities[j] - state[j])\n            state[i] -= moved\n            state[j] += moved\n        else:\n            raise AssertionError(\"unknown action %r\" % (action,))\n    return state\n\n\nfor capacities, target in [((3, 5), 4), ((5, 3), 4), ((4, 9), 6), ((2, 6), 5), ((3, 5, 8), 7), ((7, 11), 2), ((6, 10), 3)]:\n    actions = solve_water_jugs(capacities, target)\n    if actions is None:\n        continue\n    state = _replay(capacities, actions)\n    assert target in state, \\\n        \"%r on %r ended at %r, target %d\" % (actions, capacities, state, target)"
+    },
+    {
+     "name": "solutions are of minimal length",
+     "src": "for (capacities, target), best in {((3, 5), 4): 6, ((5, 3), 4): 6, ((4, 9), 6): 8, ((2, 6), 5): None, ((3, 5, 8), 7): 5, ((7, 11), 2): 14, ((6, 10), 3): None}.items():\n    actions = solve_water_jugs(capacities, target)\n    if best is None:\n        assert actions is None, \"%r/%d is impossible but got %r\" % (\n            capacities, target, actions)\n        continue\n    assert actions is not None, \"%r/%d has a solution\" % (capacities, target)\n    assert len(actions) == best, \"%r/%d solved in %d actions, optimum is %d\" % (\n        capacities, target, len(actions), best)"
+    },
+    {
+     "name": "impossible targets return None",
+     "src": "assert solve_water_jugs((2, 6), 5) is None\nassert solve_water_jugs((4, 6), 3) is None\nassert solve_water_jugs((3, 5), 9) is None\nassert solve_water_jugs((6, 10), 4) is not None"
+    },
+    {
+     "name": "three jugs still work",
+     "src": "actions = solve_water_jugs((3, 5, 8), 7)\nassert actions is not None\nassert len(actions) == 5"
+    }
+   ]
+  },
+  {
+   "id": "knight-path",
+   "track": "Classic Searches",
+   "title": "Knight's Shortest Path",
+   "difficulty": "easy",
+   "points": 15,
+   "blurb": "BFS on a chessboard graph, with rubble in the way and dead ends to detect.",
+   "statement": "<p>A knight stands on an <code>n</code> &times; <code>n</code> board at\n<code>start</code>, given as a <code>(row, col)</code> tuple. It moves in the\nusual L: two squares one way and one square perpendicular, eight candidate\nmoves in all, and it may not land outside the board or on any square listed in\n<code>blocked</code>.</p>\n\n<p>Write <code>knight_shortest_path(n, start, end, blocked)</code>, returning a\nshortest path as a list of squares <strong>including both endpoints</strong>,\nor <code>None</code> if the knight cannot reach <code>end</code>. A knight\nalready standing on the target returns <code>[start]</code>. If either endpoint\nis itself blocked, there is no path.</p>\n\n<p>This is the purest breadth-first search in the gym: the state <em>is</em> a\nsquare, so the graph is small and the whole exercise is bookkeeping. Get the\npath reconstruction right here &mdash; storing a parent pointer per square and\nwalking backwards is the pattern you will reuse everywhere.</p>",
+   "examples": ">>> knight_shortest_path(8, (0, 0), (0, 0), [])\n[(0, 0)]\n>>> knight_shortest_path(8, (0, 0), (1, 2), [])\n[(0, 0), (1, 2)]\n>>> len(knight_shortest_path(8, (0, 0), (7, 7), []))\n7\n>>> len(knight_shortest_path(8, (0, 0), (1, 1), []))\n5\n>>> knight_shortest_path(3, (0, 0), (1, 1), []) is None\nTrue",
+   "starter": "def knight_shortest_path(n, start, end, blocked):\n    pass",
+   "hints": [
+    "Write the eight offsets out once as a tuple of (dr, dc) pairs; generating them from products of (1, 2) and signs is cute but easy to get subtly wrong.",
+    "Check three things before enqueueing a square: on the board, not blocked, not already visited.",
+    "Keep a dict mapping each square to the square you came from, then rebuild the path by walking back from end and reversing.",
+    "The centre of a 3x3 board is unreachable from anywhere -- a useful reminder to handle 'frontier empty' as a real outcome."
+   ],
+   "solution": "from collections import deque\n\n_DELTAS = ((1, 2), (2, 1), (-1, 2), (-2, 1),\n           (1, -2), (2, -1), (-1, -2), (-2, -1))\n\n\ndef knight_shortest_path(n, start, end, blocked):\n    blocked = set(blocked)\n    start, end = tuple(start), tuple(end)\n    if start in blocked or end in blocked:\n        return None\n    if start == end:\n        return [start]\n    parent = {start: None}\n    frontier = deque([start])\n    while frontier:\n        square = frontier.popleft()\n        row, col = square\n        for dr, dc in _DELTAS:\n            nxt = (row + dr, col + dc)\n            if not (0 <= nxt[0] < n and 0 <= nxt[1] < n):\n                continue\n            if nxt in blocked or nxt in parent:\n                continue\n            parent[nxt] = square\n            if nxt == end:\n                path = [nxt]\n                while parent[path[-1]] is not None:\n                    path.append(parent[path[-1]])\n                return path[::-1]\n            frontier.append(nxt)\n    return None",
+   "tests": [
+    {
+     "name": "a knight already on the target",
+     "src": "assert knight_shortest_path(8, (0, 0), (0, 0), []) == [(0, 0)]\nassert knight_shortest_path(5, (2, 2), (2, 2), []) == [(2, 2)]\nassert knight_shortest_path(8, (3, 3), (3, 3), [(0, 0)]) == [(3, 3)]"
+    },
+    {
+     "name": "single hops",
+     "src": "assert knight_shortest_path(8, (0, 0), (1, 2), []) == [(0, 0), (1, 2)]\nassert knight_shortest_path(8, (4, 4), (2, 3), []) == [(4, 4), (2, 3)]"
+    },
+    {
+     "name": "paths are legal knight moves inside the board",
+     "src": "def _check(n, start, end, blocked, path):\n    blocked = set(blocked)\n    assert path[0] == tuple(start), \"path starts at %r\" % (path[0],)\n    assert path[-1] == tuple(end), \"path ends at %r\" % (path[-1],)\n    for square in path:\n        assert 0 <= square[0] < n and 0 <= square[1] < n, \"%r is off the board\" % (square,)\n        assert square not in blocked, \"%r is blocked\" % (square,)\n    for a, b in zip(path, path[1:]):\n        step = sorted((abs(a[0] - b[0]), abs(a[1] - b[1])))\n        assert step == [1, 2], \"%r -> %r is not a knight move\" % (a, b)\n\n\nfor n, start, end, blocked in [(8, (0, 0), (7, 7), []), (8, (0, 0), (1, 1), []), (8, (0, 0), (0, 1), []), (5, (0, 0), (4, 4), [(1, 2), (2, 1)]), (6, (0, 0), (5, 5), [(1, 2), (2, 1), (3, 4), (4, 3)]), (4, (0, 0), (3, 3), []), (3, (0, 0), (1, 1), [])]:\n    path = knight_shortest_path(n, start, end, list(blocked))\n    if path is None:\n        continue\n    _check(n, start, end, blocked, [tuple(sq) for sq in path])"
+    },
+    {
+     "name": "paths are shortest",
+     "src": "for (n, start, end, blocked), best in {(8, (0, 0), (7, 7), ()): 7, (8, (0, 0), (1, 1), ()): 5, (8, (0, 0), (0, 1), ()): 4, (5, (0, 0), (4, 4), ((1, 2), (2, 1))): None, (6, (0, 0), (5, 5), ((1, 2), (2, 1), (3, 4), (4, 3))): None, (4, (0, 0), (3, 3), ()): 3, (3, (0, 0), (1, 1), ()): None}.items():\n    path = knight_shortest_path(n, start, end, list(blocked))\n    if best is None:\n        assert path is None, \"(%d, %r, %r) is unreachable but got %r\" % (\n            n, start, end, path)\n        continue\n    assert path is not None, \"(%d, %r, %r) is reachable\" % (n, start, end)\n    assert len(path) == best, \"(%d, %r, %r) gave %d squares, shortest is %d\" % (\n        n, start, end, len(path), best)"
+    },
+    {
+     "name": "blocked squares are respected",
+     "src": "path = knight_shortest_path(8, (0, 0), (1, 1), [(2, 2)])\nassert path is not None\nassert (2, 2) not in [tuple(sq) for sq in path]\nassert knight_shortest_path(8, (0, 0), (7, 7), [(7, 7)]) is None\nassert knight_shortest_path(8, (0, 0), (7, 7), [(0, 0)]) is None"
+    },
+    {
+     "name": "unreachable targets return None",
+     "src": "assert knight_shortest_path(3, (0, 0), (1, 1), []) is None\nassert knight_shortest_path(1, (0, 0), (0, 0), []) == [(0, 0)]\nassert knight_shortest_path(4, (0, 0), (1, 1), [(2, 2), (1, 2), (2, 1), (2, 3), (3, 2)]) is None"
+    },
+    {
+     "name": "agrees with an independent BFS across a whole board",
+     "src": "from collections import deque\n\nDELTAS = ((1, 2), (2, 1), (-1, 2), (-2, 1),\n          (1, -2), (2, -1), (-1, -2), (-2, -1))\nn = 6\nblocked = {(2, 2), (3, 3)}\nstart = (0, 0)\ndist = {start: 1}\nqueue = deque([start])\nwhile queue:\n    r, c = queue.popleft()\n    for dr, dc in DELTAS:\n        nxt = (r + dr, c + dc)\n        if 0 <= nxt[0] < n and 0 <= nxt[1] < n and nxt not in blocked \\\n                and nxt not in dist:\n            dist[nxt] = dist[(r, c)] + 1\n            queue.append(nxt)\n\nfor r in range(n):\n    for c in range(n):\n        end = (r, c)\n        path = knight_shortest_path(n, start, end, list(blocked))\n        if end in blocked or end not in dist:\n            assert path is None, \"%r should be unreachable, got %r\" % (end, path)\n        else:\n            assert path is not None, \"%r should be reachable\" % (end,)\n            assert len(path) == dist[end], \\\n                \"%r gave %d squares, shortest is %d\" % (end, len(path), dist[end])"
+    }
+   ]
+  },
+  {
+   "id": "river-crossing",
+   "track": "Classic Searches",
+   "title": "Missionaries and Cannibals",
+   "difficulty": "hard",
+   "points": 25,
+   "blurb": "A tiny state space with a constraint that has to hold on both banks at once.",
+   "statement": "<p><code>missionaries</code> missionaries and <code>cannibals</code> cannibals\nstand on the left bank with one boat that seats <code>capacity</code> people.\nEveryone must end up on the right bank.</p>\n\n<p>Rules:</p>\n<ul>\n  <li>The boat carries between 1 and <code>capacity</code> people per crossing\n      and cannot cross empty.</li>\n  <li>On <strong>either</strong> bank, if any missionaries are present they must\n      not be outnumbered by cannibals. A bank with zero missionaries is always\n      fine.</li>\n  <li>The rule is checked after each crossing lands, counting the people who\n      just stepped off the boat as being on that bank. It is also checked on\n      the bank the boat just left.</li>\n  <li>The boat itself must be safe while crossing: it may not carry more\n      cannibals than missionaries unless it carries no missionaries at all.</li>\n</ul>\n\n<p>Write <code>solve_river_crossing(missionaries, cannibals, capacity)</code>,\nreturning a shortest list of crossings, each a\n<code>(missionaries_moved, cannibals_moved)</code> tuple, or <code>None</code>\nif there is no safe schedule. Crossings alternate direction, starting left to\nright, so the direction is implied by the index and does not appear in the\nmove.</p>\n\n<p>The classic 3-3-2 instance takes 11 crossings; 4-4-2 is famously impossible\nno matter how you shuffle. Both answers fall out of the same search, which is\nthe whole point of encoding constraints into the successor function rather than\ninto clever case analysis.</p>",
+   "examples": ">>> solve_river_crossing(0, 0, 2)\n[]\n>>> solve_river_crossing(1, 1, 2)\n[(1, 1)]\n>>> len(solve_river_crossing(3, 3, 2))\n11\n>>> len(solve_river_crossing(3, 3, 3))\n5\n>>> solve_river_crossing(4, 4, 2) is None\nTrue",
+   "starter": "def solve_river_crossing(missionaries, cannibals, capacity):\n    pass",
+   "hints": [
+    "Three numbers describe the world completely: missionaries on the left, cannibals on the left, and which side the boat is on. Everything else is implied by subtraction.",
+    "Enumerate boat loads as pairs (dm, dc) with dm + dc between 1 and capacity, then filter: enough people on the departing bank, a safe boat, and a safe state on both banks afterwards.",
+    "A bank is safe when it has no missionaries, or at least as many missionaries as cannibals. Write that as one helper and call it for both banks.",
+    "Do not forget the boat load itself must be safe -- (1, 2) is never a legal load even when both banks would survive it."
+   ],
+   "solution": "from collections import deque\n\n\ndef _safe(m, c, total_m, total_c):\n    if m < 0 or c < 0 or m > total_m or c > total_c:\n        return False\n    if m and m < c:\n        return False\n    right_m, right_c = total_m - m, total_c - c\n    if right_m and right_m < right_c:\n        return False\n    return True\n\n\ndef solve_river_crossing(missionaries, cannibals, capacity):\n    total_m, total_c = missionaries, cannibals\n    start = (total_m, total_c, 0)\n    goal = (0, 0, 1)\n    if start[:2] == (0, 0):\n        return []\n    if not _safe(total_m, total_c, total_m, total_c):\n        return None\n    visited = {start}\n    frontier = deque([(start, [])])\n    while frontier:\n        (m, c, boat), moves = frontier.popleft()\n        sign = -1 if boat == 0 else 1\n        for dm in range(capacity + 1):\n            for dc in range(capacity + 1 - dm):\n                if dm + dc == 0:\n                    continue\n                if dm and dm < dc:\n                    continue\n                if boat == 0 and (dm > m or dc > c):\n                    continue\n                if boat == 1 and (dm > total_m - m or dc > total_c - c):\n                    continue\n                nxt = (m + sign * dm, c + sign * dc, 1 - boat)\n                if not _safe(nxt[0], nxt[1], total_m, total_c):\n                    continue\n                if nxt in visited:\n                    continue\n                if nxt == goal:\n                    return moves + [(dm, dc)]\n                visited.add(nxt)\n                frontier.append((nxt, moves + [(dm, dc)]))\n    return None",
+   "tests": [
+    {
+     "name": "nobody to move",
+     "src": "assert solve_river_crossing(0, 0, 2) == []\nassert solve_river_crossing(0, 0, 1) == []"
+    },
+    {
+     "name": "one crossing is enough for small parties",
+     "src": "assert solve_river_crossing(1, 1, 2) == [(1, 1)]\nassert solve_river_crossing(0, 2, 2) == [(0, 2)]\nassert solve_river_crossing(2, 2, 4) == [(2, 2)]"
+    },
+    {
+     "name": "crossings are legal and land everyone safely",
+     "src": "def _check(total_m, total_c, capacity, moves):\n    m, c, boat = total_m, total_c, 0\n    for dm, dc in moves:\n        assert dm >= 0 and dc >= 0 and 1 <= dm + dc <= capacity, \\\n            \"illegal boat load %r\" % ((dm, dc),)\n        assert not (dm and dm < dc), \"boat load %r is unsafe\" % ((dm, dc),)\n        if boat == 0:\n            assert dm <= m and dc <= c, \"not enough people on the left bank\"\n            m, c = m - dm, c - dc\n        else:\n            assert dm <= total_m - m and dc <= total_c - c, \\\n                \"not enough people on the right bank\"\n            m, c = m + dm, c + dc\n        boat = 1 - boat\n        for bm, bc in ((m, c), (total_m - m, total_c - c)):\n            assert not (bm and bm < bc), \\\n                \"bank (%d, %d) is unsafe after %r\" % (bm, bc, (dm, dc))\n    assert (m, c, boat) == (0, 0, 1), \\\n        \"ended with %d missionaries and %d cannibals on the left\" % (m, c)\n\n\nfor total_m, total_c, capacity in [(3, 3, 2), (3, 3, 3), (2, 2, 2), (1, 1, 1), (4, 4, 2), (4, 4, 3), (5, 5, 3), (5, 5, 2), (0, 3, 2)]:\n    moves = solve_river_crossing(total_m, total_c, capacity)\n    if moves is None:\n        continue\n    _check(total_m, total_c, capacity, [tuple(x) for x in moves])"
+    },
+    {
+     "name": "schedules are shortest",
+     "src": "for (total_m, total_c, capacity), best in {(3, 3, 2): 11, (3, 3, 3): 5, (2, 2, 2): 5, (1, 1, 1): None, (4, 4, 2): None, (4, 4, 3): 9, (5, 5, 3): 11, (5, 5, 2): None, (0, 3, 2): 3}.items():\n    moves = solve_river_crossing(total_m, total_c, capacity)\n    label = \"(%d, %d, %d)\" % (total_m, total_c, capacity)\n    if best is None:\n        assert moves is None, \"%s is impossible but got %r\" % (label, moves)\n        continue\n    assert moves is not None, \"%s has a solution\" % label\n    assert len(moves) == best, \"%s took %d crossings, optimum is %d\" % (\n        label, len(moves), best)"
+    },
+    {
+     "name": "the classic instances",
+     "src": "assert len(solve_river_crossing(3, 3, 2)) == 11\nassert solve_river_crossing(4, 4, 2) is None\nassert solve_river_crossing(4, 4, 3) is not None"
+    },
+    {
+     "name": "cannibals alone are never a problem",
+     "src": "for c in range(1, 6):\n    moves = solve_river_crossing(0, c, 2)\n    assert moves is not None, \"0 missionaries and %d cannibals is always fine\" % c\n    assert all(dm == 0 for dm, dc in moves)"
+    }
+   ]
+  }
+ ]
+}
