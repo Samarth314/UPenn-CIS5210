@@ -7,6 +7,9 @@
 ############################################################
 
 # Include your imports here, if any are used.
+import math
+import random
+from collections import deque
 
 ############################################################
 
@@ -18,7 +21,6 @@ student_name = "Samarth Shah"
 
 
 def num_placements_all(n):
-    import math
     return math.comb(n**2, n)
 
 
@@ -59,27 +61,41 @@ def n_queens_valid(board):
     return True
 
 
-# need to change all of the naming stuff for helper below
 def n_queens_solutions(n):
 
     grid = [0]*n
 
     solutions = []
 
-    def dfs_tree(board, row):
-        n = len(board)
+    used_cols = set()
+    used_diag = set()
+    used_anti = set()
 
-        if row == n:
+    def n_queens_helper(board, row):
+
+        if row == len(board):
             solutions.append(board[:])
             return
 
-        for col in range(0, n):
-            board[row] = col
-            if n_queens_valid(board[:(row+1)]):
-                dfs_tree(board, row+1)
-            board[row] = 0
+        for col in range(0, len(board)):
 
-    dfs_tree(grid, 0)
+            if (col in used_cols
+                    or (row - col) in used_diag
+                    or (row + col) in used_anti):
+                continue
+
+            used_cols.add(col)
+            used_diag.add(row - col)
+            used_anti.add(row + col)
+
+            board[row] = col
+            n_queens_helper(board, row+1)
+
+            used_cols.remove(col)
+            used_diag.remove(row - col)
+            used_anti.remove(row + col)
+
+    n_queens_helper(grid, 0)
     return solutions
 
 ############################################################
@@ -113,7 +129,6 @@ class LightsOutPuzzle(object):
                 col + 1]
 
     def scramble(self):
-        import random
 
         rows, cols = len(self.lights_board), len(self.lights_board[0])
 
@@ -144,7 +159,6 @@ class LightsOutPuzzle(object):
 
     def find_solution(self):
 
-        from collections import deque
         queue = deque()
         visited_set = set()
 
@@ -182,14 +196,11 @@ def create_puzzle(rows, cols):
 
 
 def solve_identical_disks(length, n):
-    from collections import deque
 
     disk_arr = [0]*length
     for i in range(0, n):
         disk_arr[i] = 1
     # [1, 1, 0, 0] / [1, 1, 0, 0, 0]
-
-    moves = []
 
     queue = deque()
     visited_set = set()
@@ -242,7 +253,6 @@ def solve_identical_disks(length, n):
 
 
 def solve_distinct_disks(length, n):
-    from collections import deque
 
     queue = deque()
     visited_set = set()
