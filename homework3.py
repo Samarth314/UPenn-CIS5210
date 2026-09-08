@@ -43,8 +43,8 @@ class TilePuzzle(object):
         return self.board
 
     def perform_move(self, direction):
-        offsets = {"up": (-1, 0), "down": (1, 0), "left": (0, -1)
-                   , "right": (0, 1)}
+        offsets = {"up": (-1, 0), "down": (1, 0),
+                   "left": (0, -1), "right": (0, 1)}
         if direction not in offsets:
             return False
 
@@ -56,7 +56,8 @@ class TilePuzzle(object):
                 if self.board[row][col] == 0:
                     r, c = row + dr, col + dc
                     if 0 <= r < rows and 0 <= c < cols:
-                        self.board[row][col], self.board[r][c] = self.board[r][c], self.board[row][col]
+                        self.board[row][col], self.board[r][c] = (
+                            self.board[r][c], self.board[row][col])
                         return True
                     return False
 
@@ -86,8 +87,8 @@ class TilePuzzle(object):
     # Required
     def find_solutions_iddfs(self):
 
-        opposite = {"up": "down", "down": "up", "left": "right", "right"
-                    : "left"}
+        opposite = {"up": "down", "down": "up",
+                    "left": "right", "right": "left"}
 
         def iddfs_helper(self, limit, moves):
             if len(moves) == limit:
@@ -111,7 +112,6 @@ class TilePuzzle(object):
                     yield solution
                 return
             limit_var += 1
-
 
     # Required
     def find_solution_a_star(self):
@@ -152,11 +152,10 @@ class TilePuzzle(object):
             for move, mod_board in curr_board.successors():
                 a_star_calc = board_heuristic(mod_board) + len(moves) + 1
                 counter += 1
-                prior_queue.put((a_star_calc, counter, mod_board.copy()
-                                 , moves + [move]))
+                prior_queue.put((a_star_calc, counter,
+                                 mod_board.copy(), moves + [move]))
 
         return None
-
 
 
 ############################################################
@@ -277,41 +276,62 @@ def solve_distinct_disks(length, n):
                 for direction in directions:
                     mod_pos = direction + i
 
-                    if direction == 1 and mod_pos < length and curr_board[mod_pos] == 0:
+                    if (direction == 1 and mod_pos < length
+                            and curr_board[mod_pos] == 0):
                         curr_board_copy = list(curr_board)
-                        curr_board_copy[i], curr_board_copy[mod_pos] = curr_board_copy[mod_pos], curr_board_copy[i]
+                        curr_board_copy[i], curr_board_copy[mod_pos] = (
+                            curr_board_copy[mod_pos], curr_board_copy[i])
                         curr_board_copy = tuple(curr_board_copy)
                         if curr_board_copy in visited_set:
                             continue
                         counter += 1
-                        priority_queue.put((board_heuristic(curr_board_copy) + curr_g + 1, counter, curr_g + 1, curr_board_copy, curr_board, (i, i+1)))
-                    if direction == 2 and mod_pos < length and curr_board[mod_pos] == 0 and curr_board[mod_pos-1] != 0:
+                        priority_queue.put(
+                            (board_heuristic(curr_board_copy)
+                             + curr_g + 1, counter, curr_g + 1,
+                             curr_board_copy, curr_board, (i, i+1)))
+                    if (direction == 2 and mod_pos < length
+                            and curr_board[mod_pos] == 0
+                            and curr_board[mod_pos-1] != 0):
                         curr_board_copy = list(curr_board)
-                        curr_board_copy[i], curr_board_copy[mod_pos] = curr_board_copy[mod_pos], curr_board_copy[i]
+                        curr_board_copy[i], curr_board_copy[mod_pos] = (
+                            curr_board_copy[mod_pos], curr_board_copy[i])
                         curr_board_copy = tuple(curr_board_copy)
                         if curr_board_copy in visited_set:
                             continue
                         counter += 1
-                        priority_queue.put((board_heuristic(curr_board_copy) + curr_g + 1, counter, curr_g + 1, curr_board_copy, curr_board, (i, i+2)))
-                    if direction == -1 and mod_pos >= 0 and curr_board[mod_pos] == 0:
+                        priority_queue.put(
+                            (board_heuristic(curr_board_copy)
+                             + curr_g + 1, counter, curr_g + 1,
+                             curr_board_copy, curr_board, (i, i+2)))
+                    if (direction == -1 and mod_pos >= 0
+                            and curr_board[mod_pos] == 0):
                         curr_board_copy = list(curr_board)
-                        curr_board_copy[i], curr_board_copy[mod_pos] = curr_board_copy[mod_pos], curr_board_copy[i]
+                        curr_board_copy[i], curr_board_copy[mod_pos] = (
+                            curr_board_copy[mod_pos], curr_board_copy[i])
                         curr_board_copy = tuple(curr_board_copy)
                         if curr_board_copy in visited_set:
                             continue
                         counter += 1
-                        priority_queue.put((board_heuristic(curr_board_copy) + curr_g + 1, counter, curr_g + 1, curr_board_copy, curr_board, (i, i-1)))
-                    if direction == -2 and mod_pos >= 0 and curr_board[mod_pos] == 0 and curr_board[mod_pos+1] != 0:
+                        priority_queue.put(
+                            (board_heuristic(curr_board_copy)
+                             + curr_g + 1, counter, curr_g + 1,
+                             curr_board_copy, curr_board, (i, i-1)))
+                    if (direction == -2 and mod_pos >= 0
+                            and curr_board[mod_pos] == 0
+                            and curr_board[mod_pos+1] != 0):
                         curr_board_copy = list(curr_board)
-                        curr_board_copy[i], curr_board_copy[mod_pos] = curr_board_copy[mod_pos], curr_board_copy[i]
+                        curr_board_copy[i], curr_board_copy[mod_pos] = (
+                            curr_board_copy[mod_pos], curr_board_copy[i])
                         curr_board_copy = tuple(curr_board_copy)
                         if curr_board_copy in visited_set:
                             continue
                         counter += 1
-                        priority_queue.put((board_heuristic(curr_board_copy) + curr_g + 1, counter, curr_g + 1, curr_board_copy, curr_board, (i, i-2)))
+                        priority_queue.put(
+                            (board_heuristic(curr_board_copy)
+                             + curr_g + 1, counter, curr_g + 1,
+                             curr_board_copy, curr_board, (i, i-2)))
 
     return None
-
 
 
 ############################################################
@@ -321,19 +341,45 @@ def solve_distinct_disks(length, n):
 
 # Just an approximation is fine.
 feedback_question_1 = """
-Type your response here.
-Your response may span multiple lines.
-Do not include these instructions in your response.
+5 hours.
 """
 
 feedback_question_2 = """
-Type your response here.
-Your response may span multiple lines.
-Do not include these instructions in your response.
+Section 1 Tile Puzzle and Section 3 Linear Disk Movement, Revisited posed
+the greatest difficulties within the scope of this project. First off, my
+solver in Section 1 took the maximum amount of runtime due to the incorrect
+definition of the helper function that would recurse upon the same board
+rather than upon the new successor board. As a result, the game state did
+not change, and the maximum depth increased indefinitely until running time
+exceeded any possible limit. Another thing that caused trouble was
+realizing that successors should verify whether or not perform_move returns
+False before yielding. Otherwise, the algorithm would produce a huge number
+of moves resulting from illegal attempts. The biggest problem that occurred
+in Section 3 was defining the correct heuristics function to use within A*.
+Initially, calculating the total distance between disks and their goal
+positions would result in overestimating the actual path costs, thereby
+leading to suboptimal moves. Dividing the value by two would correct the
+issue, since one action allows for shifting two cells. Lastly,
+it took quite some time figuring out how to deal with PriorityQueue. One
+has to note that when two game states have equivalent costs, PriorityQueue
+falls through to comparing tuples' second members. For that reason,
+incrementing a counter in every call was necessary to distinguish among
+duplicates.
 """
 
 feedback_question_3 = """
-Type your response here.
-Your response may span multiple lines.
-Do not include these instructions in your response.
+One aspect of this project that made everything easier was that each
+section relied on the same framework used for A*. Once implemented
+correctly, solving the tile puzzle, I merely changed variables representing
+what constitutes a game state, how many points each action costs, and how
+the heuristic estimates the remaining cost. Section 2 makes it clear that
+the game state is now represented by coordinates rather than by board and
+moving diagonally now costs the square root of two units. The provided GUIs
+turned out to be another valuable tool to aid me with debugging. Having
+visualized solvers working step-by-step was far better compared to just
+analyzing textual output consisting of lists of moves. An additional feature
+that I believe could improve testing greatly would be to add several example
+tests for IDDFS and A* on large boards. Those provided solve within
+milliseconds, therefore providing absolutely no information on scalability
+issues related to the growth of the total number of actions performed.
 """
