@@ -1,0 +1,464 @@
+{
+ "tracks": [
+  {
+   "name": "Heuristics",
+   "blurb": "Estimating what is left to do, and proving the estimate is safe."
+  },
+  {
+   "name": "A* Machinery",
+   "blurb": "The queue, the cost bookkeeping, and the h = 0 baseline."
+  },
+  {
+   "name": "A* Solvers",
+   "blurb": "Best-first search let loose on real state spaces."
+  },
+  {
+   "name": "Iterative Deepening",
+   "blurb": "Depth limits, when you want every optimal answer or very little memory."
+  }
+ ],
+ "problems": [
+  {
+   "id": "misplaced-tiles",
+   "track": "Heuristics",
+   "title": "Counting What Is Out of Place",
+   "difficulty": "warmup",
+   "points": 5,
+   "blurb": "The simplest admissible heuristic for a sliding puzzle, and why the blank is excluded.",
+   "statement": "<p>A sliding puzzle is a two-dimensional list holding the values\n<code>0</code> through <code>r * c - 1</code>, where <code>0</code> is the\nempty space. The solved board has <code>1</code> through <code>r * c - 1</code>\nin row-major order with <code>0</code> in the lower-right corner.</p>\n\n<p>Write <code>misplaced_tiles(board)</code>, returning the number of\n<strong>numbered</strong> tiles that are not sitting where the solved board\nwould put them. The empty space is never counted.</p>\n\n<p>That exclusion is the whole point of the exercise. Every legal move slides\nexactly one numbered tile, so a board with <code>k</code> misplaced tiles needs\nat least <code>k</code> more moves &mdash; the heuristic is admissible. Count\nthe blank too and a board one move from solved scores 2, which overestimates,\nand A* built on it can return a path that is not shortest.</p>\n\n<p>Your function must work for any rectangular board, not just 3 &times; 3.</p>",
+   "examples": ">>> misplaced_tiles([[1, 2, 3], [4, 5, 6], [7, 8, 0]])\n0\n>>> misplaced_tiles([[1, 2, 3], [4, 5, 6], [7, 0, 8]])\n1\n>>> misplaced_tiles([[0, 1], [3, 2]])\n2\n>>> misplaced_tiles([[1, 2, 3, 4], [5, 6, 7, 0]])\n0",
+   "starter": "def misplaced_tiles(board):\n    pass",
+   "hints": [
+    "Walk the board with two nested loops and keep a running count. You need the row and column of each value, so iterate over indices rather than over the rows directly.",
+    "The solved position of tile v is row (v - 1) // cols and column (v - 1) % cols. divmod(v - 1, cols) gives you both at once. Note that the divisor is the number of COLUMNS, which only matters once the board stops being square.",
+    "Skip the cell holding 0 before you compare anything, otherwise the blank contributes a count of its own and the heuristic stops being admissible."
+   ],
+   "solution": "def misplaced_tiles(board):\n    rows, cols = len(board), len(board[0])\n    count = 0\n    for row in range(rows):\n        for col in range(cols):\n            value = board[row][col]\n            if value == 0:\n                continue\n            goal_row, goal_col = divmod(value - 1, cols)\n            if (row, col) != (goal_row, goal_col):\n                count += 1\n    return count",
+   "tests": [
+    {
+     "name": "solved boards score zero",
+     "src": "assert misplaced_tiles([[1, 2, 3], [4, 5, 6], [7, 8, 0]]) == 0\nassert misplaced_tiles([[1, 2], [3, 0]]) == 0\nassert misplaced_tiles([[1, 2, 3, 4], [5, 6, 7, 0]]) == 0\nassert misplaced_tiles([[0]]) == 0"
+    },
+    {
+     "name": "the blank is never counted",
+     "src": "# One move from solved: exactly one numbered tile moved, so the answer is 1.\nassert misplaced_tiles([[1, 2, 3], [4, 5, 6], [7, 0, 8]]) == 1\nassert misplaced_tiles([[1, 2, 3], [4, 5, 0], [7, 8, 6]]) == 1\n# The blank sitting far from its home changes nothing on its own -- only\n# tile 1 is actually out of place here.\nassert misplaced_tiles([[0, 2, 3], [4, 5, 6], [7, 8, 1]]) == 1"
+    },
+    {
+     "name": "non-square boards use the column count",
+     "src": "assert misplaced_tiles([[1, 2], [3, 4], [5, 0]]) == 0\nassert misplaced_tiles([[2, 1], [3, 4], [5, 0]]) == 2\nassert misplaced_tiles([[1, 2, 3, 4, 5], [6, 7, 8, 9, 0]]) == 0\nassert misplaced_tiles([[5, 2, 3, 4, 1], [6, 7, 8, 9, 0]]) == 2"
+    },
+    {
+     "name": "scrambled boards, checked against a direct recount",
+     "src": "import random\nrandom.seed(11)\nfor trial in range(200):\n    rows = random.randint(1, 4)\n    cols = random.randint(1, 4)\n    values = list(range(1, rows * cols)) + [0]\n    random.shuffle(values)\n    board = [values[r * cols:(r + 1) * cols] for r in range(rows)]\n    expected = 0\n    for r in range(rows):\n        for c in range(cols):\n            v = board[r][c]\n            if v != 0 and (r * cols + c) != v - 1:\n                expected += 1\n    got = misplaced_tiles(board)\n    assert got == expected, (board, got, expected)"
+    },
+    {
+     "name": "never overestimates the true distance",
+     "src": "from collections import deque\n# Brute-force every board reachable in a 2x3 puzzle and confirm the heuristic\n# is a lower bound on the real number of moves remaining.\nGOAL = (1, 2, 3, 4, 5, 0)\nR, C = 2, 3\n\n\ndef neighbours(state):\n    i = state.index(0)\n    r, c = divmod(i, C)\n    for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n        nr, nc = r + dr, c + dc\n        if 0 <= nr < R and 0 <= nc < C:\n            j = nr * C + nc\n            lst = list(state)\n            lst[i], lst[j] = lst[j], lst[i]\n            yield tuple(lst)\n\n\ndist = {GOAL: 0}\nqueue = deque([GOAL])\nwhile queue:\n    cur = queue.popleft()\n    for nxt in neighbours(cur):\n        if nxt not in dist:\n            dist[nxt] = dist[cur] + 1\n            queue.append(nxt)\n\nassert len(dist) == 360\nfor state, true_cost in dist.items():\n    board = [list(state[r * C:(r + 1) * C]) for r in range(R)]\n    h = misplaced_tiles(board)\n    assert h <= true_cost, (board, h, true_cost)"
+    }
+   ]
+  },
+  {
+   "id": "manhattan-any-goal",
+   "track": "Heuristics",
+   "title": "Manhattan Distance to an Arbitrary Goal",
+   "difficulty": "easy",
+   "points": 10,
+   "blurb": "Manhattan distance when the goal board is handed to you instead of assumed.",
+   "statement": "<p>Manhattan distance is the standard sliding-puzzle heuristic: for every\nnumbered tile, add the row distance plus the column distance between where it\nsits and where it belongs, then sum over all tiles. It dominates the\nmisplaced-tile count &mdash; it is never smaller &mdash; while staying\nadmissible, because one move changes one tile's distance by exactly 1.</p>\n\n<p>Write <code>manhattan(board, goal)</code>. Both arguments are rectangular\ntwo-dimensional lists holding the same set of values, and <code>0</code> is\nthe empty space. Unlike the textbook version, <strong>the goal is a\nparameter</strong>, so you cannot assume row-major order &mdash; the target\nlayout might be column-major, spiral, or arbitrary.</p>\n\n<p>As before, the empty space contributes nothing.</p>",
+   "examples": ">>> goal = [[1, 2, 3], [4, 5, 6], [7, 8, 0]]\n>>> manhattan([[1, 2, 3], [4, 5, 6], [7, 8, 0]], goal)\n0\n>>> manhattan([[1, 2, 3], [4, 5, 6], [7, 0, 8]], goal)\n1\n>>> manhattan([[3, 2, 1], [4, 5, 6], [7, 8, 0]], goal)\n4\n>>> snake = [[1, 2, 3], [6, 5, 4], [7, 8, 0]]\n>>> manhattan([[1, 2, 3], [4, 5, 6], [7, 8, 0]], snake)\n4",
+   "starter": "def manhattan(board, goal):\n    pass",
+   "hints": [
+    "You cannot compute the goal position arithmetically any more, so build a lookup first: one pass over goal producing {value: (row, col)}. A dict comprehension over both indices does it in a line.",
+    "With that dict in hand, the second pass is the familiar one -- for each numbered tile at (r, c), add abs(r - gr) + abs(c - gc).",
+    "Build the lookup once, before the loop. Calling goal-searching code inside the inner loop turns an O(n) heuristic into O(n^2), and this function runs at every node of a search."
+   ],
+   "solution": "def manhattan(board, goal):\n    homes = {}\n    for row in range(len(goal)):\n        for col in range(len(goal[0])):\n            homes[goal[row][col]] = (row, col)\n\n    total = 0\n    for row in range(len(board)):\n        for col in range(len(board[0])):\n            value = board[row][col]\n            if value == 0:\n                continue\n            goal_row, goal_col = homes[value]\n            total += abs(row - goal_row) + abs(col - goal_col)\n    return total",
+   "tests": [
+    {
+     "name": "matches the row-major textbook cases",
+     "src": "goal = [[1, 2, 3], [4, 5, 6], [7, 8, 0]]\nassert manhattan([[1, 2, 3], [4, 5, 6], [7, 8, 0]], goal) == 0\nassert manhattan([[1, 2, 3], [4, 5, 6], [7, 0, 8]], goal) == 1\nassert manhattan([[1, 2, 3], [4, 0, 5], [7, 8, 6]], goal) == 2\nassert manhattan([[3, 2, 1], [4, 5, 6], [7, 8, 0]], goal) == 4"
+    },
+    {
+     "name": "the goal really is honoured",
+     "src": "snake = [[1, 2, 3], [6, 5, 4], [7, 8, 0]]\n# Against the snake goal, the row-major board is NOT solved.\nassert manhattan([[1, 2, 3], [6, 5, 4], [7, 8, 0]], snake) == 0\nassert manhattan([[1, 2, 3], [4, 5, 6], [7, 8, 0]], snake) == 4\n# A goal that is a pure transpose.\ncol_major = [[1, 3, 5], [2, 4, 6], [7, 8, 0]]\nassert manhattan(col_major, col_major) == 0\nassert manhattan([[1, 2, 3], [4, 5, 6], [7, 8, 0]], col_major) == 6"
+    },
+    {
+     "name": "blank excluded, non-square boards fine",
+     "src": "goal = [[1, 2, 3, 4], [5, 6, 7, 0]]\nassert manhattan([[1, 2, 3, 4], [5, 6, 7, 0]], goal) == 0\n# Moving only the blank is impossible in isolation, but as a raw board the\n# tile that swapped with it is the only contributor.\nassert manhattan([[1, 2, 3, 4], [5, 6, 0, 7]], goal) == 1\nassert manhattan([[0, 1], [2, 3]], [[1, 2], [3, 0]]) == 4"
+    },
+    {
+     "name": "dominates misplaced-tile count but stays admissible",
+     "src": "from collections import deque\nGOAL = (1, 2, 3, 4, 5, 0)\nR, C = 2, 3\ngoal_board = [list(GOAL[r * C:(r + 1) * C]) for r in range(R)]\n\n\ndef neighbours(state):\n    i = state.index(0)\n    r, c = divmod(i, C)\n    for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n        nr, nc = r + dr, c + dc\n        if 0 <= nr < R and 0 <= nc < C:\n            j = nr * C + nc\n            lst = list(state)\n            lst[i], lst[j] = lst[j], lst[i]\n            yield tuple(lst)\n\n\ndist = {GOAL: 0}\nqueue = deque([GOAL])\nwhile queue:\n    cur = queue.popleft()\n    for nxt in neighbours(cur):\n        if nxt not in dist:\n            dist[nxt] = dist[cur] + 1\n            queue.append(nxt)\n\nfor state, true_cost in dist.items():\n    board = [list(state[r * C:(r + 1) * C]) for r in range(R)]\n    h = manhattan(board, goal_board)\n    misplaced = sum(1 for i, v in enumerate(state)\n                    if v != 0 and v - 1 != i)\n    assert h <= true_cost, (\"overestimates\", board, h, true_cost)\n    assert h >= misplaced, (\"weaker than misplaced count\", board, h, misplaced)"
+    },
+    {
+     "name": "random boards against a straightforward recount",
+     "src": "import random\nrandom.seed(5)\nfor trial in range(150):\n    rows = random.randint(1, 4)\n    cols = random.randint(1, 4)\n    values = list(range(rows * cols))\n    goal_vals = values[:]\n    random.shuffle(goal_vals)\n    board_vals = values[:]\n    random.shuffle(board_vals)\n    goal = [goal_vals[r * cols:(r + 1) * cols] for r in range(rows)]\n    board = [board_vals[r * cols:(r + 1) * cols] for r in range(rows)]\n    homes = {}\n    for r in range(rows):\n        for c in range(cols):\n            homes[goal[r][c]] = (r, c)\n    expected = 0\n    for r in range(rows):\n        for c in range(cols):\n            v = board[r][c]\n            if v == 0:\n                continue\n            gr, gc = homes[v]\n            expected += abs(r - gr) + abs(c - gc)\n    assert manhattan(board, goal) == expected, (board, goal)"
+    }
+   ]
+  },
+  {
+   "id": "does-it-overestimate",
+   "track": "Heuristics",
+   "title": "Does This Heuristic Overestimate?",
+   "difficulty": "medium",
+   "points": 15,
+   "blurb": "Prove a candidate heuristic admissible by brute-forcing the true distances.",
+   "statement": "<p>A* only returns optimal answers if its heuristic is <strong>admissible</strong>\n&mdash; it must never claim more moves than are really needed. Get that wrong\nand nothing raises; the search simply returns a longer solution than the best\none, and you may not notice.</p>\n\n<p>On a puzzle small enough to enumerate, you can settle the question by brute\nforce. Write <code>is_admissible(goal, successors, h)</code>, returning\n<code>True</code> if <code>h(state) &le; </code> the true number of moves from\n<code>state</code> to <code>goal</code>, for <strong>every</strong> state that\ncan reach the goal.</p>\n\n<ul>\n  <li><code>goal</code> &mdash; a hashable state, typically a tuple.</li>\n  <li><code>successors(state)</code> &mdash; a function yielding the states one\n      move away. Every move costs 1.</li>\n  <li><code>h(state)</code> &mdash; a function returning a number.</li>\n</ul>\n\n<p>You may assume every move is <strong>reversible</strong>, which is true of\nthe sliding and disk puzzles this is aimed at. That means a single search\noutward from <code>goal</code> reaches every relevant state at its true\ndistance, and you never have to search separately from each one.</p>\n\n<p>Because every move costs exactly 1, a plain breadth-first search is the\nright tool &mdash; no priority queue needed here.</p>",
+   "examples": ">>> def line(state):            # states 0..4 in a row\n...     for nxt in (state - 1, state + 1):\n...         if 0 <= nxt <= 4:\n...             yield nxt\n...\n>>> is_admissible(0, line, lambda s: s)\nTrue\n>>> is_admissible(0, line, lambda s: s + 1)\nFalse\n>>> is_admissible(0, line, lambda s: 0)\nTrue\n>>> is_admissible(0, line, lambda s: 2 * s)\nFalse",
+   "starter": "def is_admissible(goal, successors, h):\n    pass",
+   "hints": [
+    "Breadth-first search outward from goal, recording the depth at which each state is first reached. That depth IS the true distance, because every move costs 1 and moves are reversible.",
+    "Use a dict rather than a set for the visited states -- you need the distance, not just the fact that you have been there.",
+    "Check every state you found, not only the ones far from the goal. A heuristic that overestimates at a single state is still inadmissible, and h(goal) itself must not exceed 0."
+   ],
+   "solution": "from collections import deque\n\n\ndef is_admissible(goal, successors, h):\n    distance = {goal: 0}\n    frontier = deque([goal])\n    while frontier:\n        state = frontier.popleft()\n        for nxt in successors(state):\n            if nxt not in distance:\n                distance[nxt] = distance[state] + 1\n                frontier.append(nxt)\n\n    for state, true_cost in distance.items():\n        if h(state) > true_cost:\n            return False\n    return True",
+   "tests": [
+    {
+     "name": "the worked line example",
+     "src": "def line(state):\n    for nxt in (state - 1, state + 1):\n        if 0 <= nxt <= 4:\n            yield nxt\n\n\nassert is_admissible(0, line, lambda s: s) is True\nassert is_admissible(0, line, lambda s: s + 1) is False\nassert is_admissible(0, line, lambda s: 0) is True\nassert is_admissible(0, line, lambda s: 2 * s) is False\n# The zero heuristic is admissible for anything.\nassert is_admissible(3, line, lambda s: 0) is True\n# Negative estimates are silly but never overestimate.\nassert is_admissible(3, line, lambda s: -5) is True"
+    },
+    {
+     "name": "h at the goal itself must not exceed zero",
+     "src": "def line(state):\n    for nxt in (state - 1, state + 1):\n        if 0 <= nxt <= 4:\n            yield nxt\n\n\n# True distance at the goal is 0, so any positive estimate there fails.\nassert is_admissible(2, line, lambda s: 1 if s == 2 else 0) is False\nassert is_admissible(2, line, lambda s: 0) is True"
+    },
+    {
+     "name": "a single bad state anywhere is enough to fail",
+     "src": "def line(state):\n    for nxt in (state - 1, state + 1):\n        if 0 <= nxt <= 8:\n            yield nxt\n\n\n# Correct everywhere except state 7, which is deep in the space.\ndef sneaky(s):\n    return 99 if s == 7 else abs(s)\n\n\nassert is_admissible(0, line, lambda s: abs(s)) is True\nassert is_admissible(0, line, sneaky) is False"
+    },
+    {
+     "name": "sliding puzzle: Manhattan yes, blank-counting Manhattan no",
+     "src": "R, C = 2, 3\nGOAL = (1, 2, 3, 4, 5, 0)\n\n\ndef slide(state):\n    i = state.index(0)\n    r, c = divmod(i, C)\n    for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n        nr, nc = r + dr, c + dc\n        if 0 <= nr < R and 0 <= nc < C:\n            j = nr * C + nc\n            lst = list(state)\n            lst[i], lst[j] = lst[j], lst[i]\n            yield tuple(lst)\n\n\ndef manhattan(state):\n    total = 0\n    for i, v in enumerate(state):\n        if v == 0:\n            continue\n        total += (abs(i // C - (v - 1) // C) + abs(i % C - (v - 1) % C))\n    return total\n\n\ndef manhattan_with_blank(state):\n    total = manhattan(state)\n    i = state.index(0)\n    total += abs(i // C - (R - 1)) + abs(i % C - (C - 1))\n    return total\n\n\ndef misplaced(state):\n    return sum(1 for i, v in enumerate(state) if v != 0 and v - 1 != i)\n\n\nassert is_admissible(GOAL, slide, manhattan) is True\nassert is_admissible(GOAL, slide, misplaced) is True\n# Counting the blank is exactly the mistake that breaks admissibility.\nassert is_admissible(GOAL, slide, manhattan_with_blank) is False\n# Doubling an admissible heuristic overshoots.\nassert is_admissible(GOAL, slide, lambda s: 2 * manhattan(s)) is False"
+    },
+    {
+     "name": "disk puzzle: the raw distance sum overestimates, halved it does not",
+     "src": "LENGTH, N = 5, 3\nGOAL = tuple([0] * (LENGTH - N) + list(range(N, 0, -1)))\n\n\ndef disks(state):\n    for i in range(LENGTH):\n        if state[i] == 0:\n            continue\n        for d in (1, 2, -1, -2):\n            j = i + d\n            if not (0 <= j < LENGTH) or state[j] != 0:\n                continue\n            if abs(d) == 2 and state[i + d // 2] == 0:\n                continue\n            lst = list(state)\n            lst[i], lst[j] = lst[j], lst[i]\n            yield tuple(lst)\n\n\ndef raw(state):\n    return sum(abs(i - (LENGTH - v)) for i, v in enumerate(state) if v != 0)\n\n\ndef halved(state):\n    return raw(state) / 2\n\n\n# A single move shifts one disk by up to two cells, so the raw sum can be\n# nearly double the real move count.\nassert is_admissible(GOAL, disks, raw) is False\nassert is_admissible(GOAL, disks, halved) is True\nassert is_admissible(GOAL, disks, lambda s: 0) is True"
+    },
+    {
+     "name": "agrees with a direct recount over the whole state space",
+     "src": "from collections import deque\nimport random\nrandom.seed(13)\n\nR, C = 2, 3\nGOAL = (1, 2, 3, 4, 5, 0)\n\n\ndef slide(state):\n    i = state.index(0)\n    r, c = divmod(i, C)\n    for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n        nr, nc = r + dr, c + dc\n        if 0 <= nr < R and 0 <= nc < C:\n            j = nr * C + nc\n            lst = list(state)\n            lst[i], lst[j] = lst[j], lst[i]\n            yield tuple(lst)\n\n\ntruth = {GOAL: 0}\nq = deque([GOAL])\nwhile q:\n    cur = q.popleft()\n    for nxt in slide(cur):\n        if nxt not in truth:\n            truth[nxt] = truth[cur] + 1\n            q.append(nxt)\nassert len(truth) == 360\n\nstates = sorted(truth)\nfor trial in range(60):\n    bumped = random.choice(states)\n    delta = random.choice([-2, -1, 0, 1, 3])\n    table = {s: truth[s] for s in states}\n    table[bumped] = truth[bumped] + delta\n    expected = all(table[s] <= truth[s] for s in states)\n    got = is_admissible(GOAL, slide, lambda s: table[s])\n    assert got == expected, (bumped, delta, got, expected)"
+    }
+   ]
+  },
+  {
+   "id": "priority-tiebreak",
+   "track": "A* Machinery",
+   "title": "A Queue That Never Compares Payloads",
+   "difficulty": "easy",
+   "points": 10,
+   "blurb": "Ties on f-cost are the norm, not the exception. Break them without touching the states.",
+   "statement": "<p>Push <code>(cost, state)</code> tuples into a heap and the first time two\nstates share a cost, Python reaches for the second element and tries\n<code>state &lt; state</code>. For anything without an ordering &mdash; a\nboard object, a dict, a set &mdash; that is a <code>TypeError</code> in the\nmiddle of your search. Ties on <code>f</code> are extremely common in A*, so\nthis bites almost immediately.</p>\n\n<p>Build a <code>SearchQueue</code> that sidesteps it entirely:</p>\n\n<ul>\n  <li><code>push(priority, item)</code> &mdash; add an item.</li>\n  <li><code>pop()</code> &mdash; remove and return the item with the smallest\n      priority. Among equal priorities, return the one pushed\n      <strong>earliest</strong> (first in, first out).</li>\n  <li><code>__len__</code> &mdash; how many items are queued, so\n      <code>while queue:</code> works.</li>\n</ul>\n\n<p>The payloads are arbitrary and must never be compared with\n<code>&lt;</code>. Popping from an empty queue should raise\n<code>IndexError</code>.</p>",
+   "examples": ">>> q = SearchQueue()\n>>> q.push(5, \"five\")\n>>> q.push(1, \"one\")\n>>> q.push(5, \"five again\")\n>>> len(q)\n3\n>>> q.pop()\n'one'\n>>> q.pop()\n'five'\n>>> q.pop()\n'five again'\n>>> len(q)\n0",
+   "starter": "class SearchQueue:\n\n    def __init__(self):\n        pass\n\n    def push(self, priority, item):\n        pass\n\n    def pop(self):\n        pass\n\n    def __len__(self):\n        pass",
+   "hints": [
+    "Keep a monotonically increasing integer counter on the instance. Push (priority, counter, item) and bump the counter every time.",
+    "Because no two entries ever share a counter, tuple comparison always resolves at the second element and the item in slot three is never reached. That is the whole trick.",
+    "An increasing counter also gives you the FIFO tie-break for free -- earlier pushes carry smaller counters. heapq.heappush and heapq.heappop over a plain list are all you need."
+   ],
+   "solution": "import heapq\n\n\nclass SearchQueue:\n\n    def __init__(self):\n        self._heap = []\n        self._counter = 0\n\n    def push(self, priority, item):\n        heapq.heappush(self._heap, (priority, self._counter, item))\n        self._counter += 1\n\n    def pop(self):\n        if not self._heap:\n            raise IndexError(\"pop from an empty SearchQueue\")\n        return heapq.heappop(self._heap)[2]\n\n    def __len__(self):\n        return len(self._heap)",
+   "tests": [
+    {
+     "name": "ordering and FIFO tie-breaking",
+     "src": "q = SearchQueue()\nq.push(5, \"five\")\nq.push(1, \"one\")\nq.push(5, \"five again\")\nassert len(q) == 3\nassert q.pop() == \"one\"\nassert q.pop() == \"five\"\nassert q.pop() == \"five again\"\nassert len(q) == 0"
+    },
+    {
+     "name": "payloads are never compared",
+     "src": "class Unorderable:\n    def __init__(self, tag):\n        self.tag = tag\n\n    def __lt__(self, other):\n        raise AssertionError(\"the queue compared two payloads\")\n\n    def __gt__(self, other):\n        raise AssertionError(\"the queue compared two payloads\")\n\n\nq = SearchQueue()\nitems = [Unorderable(i) for i in range(40)]\nfor it in items:\n    q.push(7, it)          # every single priority identical\nseen = [q.pop().tag for _ in range(40)]\nassert seen == list(range(40)), seen"
+    },
+    {
+     "name": "dicts, sets and lists as payloads",
+     "src": "q = SearchQueue()\nq.push(2, {\"a\": 1})\nq.push(2, {1, 2, 3})\nq.push(1, [9, 9])\nassert q.pop() == [9, 9]\nassert q.pop() == {\"a\": 1}\nassert q.pop() == {1, 2, 3}"
+    },
+    {
+     "name": "empty pop raises IndexError",
+     "src": "q = SearchQueue()\ntry:\n    q.pop()\nexcept IndexError:\n    pass\nelse:\n    raise AssertionError(\"expected IndexError from an empty queue\")\nq.push(1, \"x\")\nassert q.pop() == \"x\"\ntry:\n    q.pop()\nexcept IndexError:\n    pass\nelse:\n    raise AssertionError(\"expected IndexError after draining the queue\")"
+    },
+    {
+     "name": "interleaved pushes and pops stay sorted",
+     "src": "import random\nrandom.seed(17)\nq = SearchQueue()\nreference = []\ntick = 0\nfor step in range(600):\n    if reference and random.random() < 0.45:\n        reference.sort(key=lambda pair: (pair[0], pair[1]))\n        expected = reference.pop(0)\n        assert q.pop() == expected[2], (step, expected)\n    else:\n        p = random.randint(0, 5)\n        payload = {\"n\": tick}\n        q.push(p, payload)\n        reference.append((p, tick, payload))\n        tick += 1\n    assert len(q) == len(reference)"
+    },
+    {
+     "name": "float and negative priorities work",
+     "src": "q = SearchQueue()\nq.push(2.5, \"b\")\nq.push(-1, \"a\")\nq.push(10, \"c\")\nq.push(2.5, \"b2\")\nassert [q.pop() for _ in range(4)] == [\"a\", \"b\", \"b2\", \"c\"]"
+    }
+   ]
+  },
+  {
+   "id": "uniform-cost-grid",
+   "track": "A* Machinery",
+   "title": "Cheapest Crossing, No Heuristic Yet",
+   "difficulty": "medium",
+   "points": 15,
+   "blurb": "Uniform-cost search over terrain, the h = 0 baseline every A* is measured against.",
+   "statement": "<p>A grid of non-negative integers describes terrain. Moving costs you the\nvalue of the cell you <strong>enter</strong> &mdash; you do not pay for the\ncell you start on. A value of <code>0</code> is a wall you cannot enter at\nall. Movement is four-way: up, down, left, right. No diagonals.</p>\n\n<p>Write <code>min_travel_cost(grid, start, goal)</code>, returning the\nsmallest total cost of any route, or <code>None</code> if the goal is\nunreachable or either endpoint sits on a wall.</p>\n\n<p>This is A* with <code>h = 0</code>, better known as uniform-cost search or\nDijkstra's algorithm. Building it first is worth the trouble: it is the\nbaseline the next problem's heuristic has to beat, and it is what your A*\ndegenerates into when a heuristic returns nothing useful.</p>\n\n<p>A plain breadth-first search will <em>not</em> work here. BFS finds the\nroute with the fewest steps, which on uneven terrain is frequently not the\ncheapest one.</p>",
+   "examples": ">>> flat = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]\n>>> min_travel_cost(flat, (0, 0), (2, 2))\n4\n>>> pricey = [[1, 9, 1], [1, 9, 1], [1, 1, 1]]\n>>> min_travel_cost(pricey, (0, 0), (0, 2))\n6\n>>> walled = [[1, 0, 1], [1, 0, 1], [1, 0, 1]]\n>>> print(min_travel_cost(walled, (0, 0), (0, 2)))\nNone",
+   "starter": "def min_travel_cost(grid, start, goal):\n    pass",
+   "hints": [
+    "Use a heap of (cost_so_far, cell). Pop the cheapest cell, and if it is the goal you are done -- the first time a cell comes off the heap you already hold its cheapest cost.",
+    "Do the goal test when you POP, not when you push. Testing on push returns the first route you stumble across rather than the cheapest.",
+    "Add grid[nr][nc] -- the cost of the cell you are moving INTO -- and skip any cell whose value is 0. Keep a dict of best-known costs so a cell is not expanded again through a worse route."
+   ],
+   "solution": "import heapq\n\n\ndef min_travel_cost(grid, start, goal):\n    rows, cols = len(grid), len(grid[0])\n    if grid[start[0]][start[1]] == 0 or grid[goal[0]][goal[1]] == 0:\n        return None\n\n    best = {tuple(start): 0}\n    queue = [(0, tuple(start))]\n    while queue:\n        cost, node = heapq.heappop(queue)\n        if node == tuple(goal):\n            return cost\n        if cost > best.get(node, float(\"inf\")):\n            continue\n        for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n            nr, nc = node[0] + dr, node[1] + dc\n            if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != 0:\n                nxt = cost + grid[nr][nc]\n                if nxt < best.get((nr, nc), float(\"inf\")):\n                    best[(nr, nc)] = nxt\n                    heapq.heappush(queue, (nxt, (nr, nc)))\n    return None",
+   "tests": [
+    {
+     "name": "the worked examples",
+     "src": "flat = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]\nassert min_travel_cost(flat, (0, 0), (2, 2)) == 4\npricey = [[1, 9, 1], [1, 9, 1], [1, 1, 1]]\nassert min_travel_cost(pricey, (0, 0), (0, 2)) == 6\nwalled = [[1, 0, 1], [1, 0, 1], [1, 0, 1]]\nassert min_travel_cost(walled, (0, 0), (0, 2)) is None"
+    },
+    {
+     "name": "start equals goal costs nothing",
+     "src": "flat = [[1, 1], [1, 1]]\nassert min_travel_cost(flat, (0, 0), (0, 0)) == 0\nassert min_travel_cost([[7]], (0, 0), (0, 0)) == 0"
+    },
+    {
+     "name": "endpoints on walls give None",
+     "src": "grid = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]\nassert min_travel_cost(grid, (1, 1), (0, 0)) is None\nassert min_travel_cost(grid, (0, 0), (1, 1)) is None\nassert min_travel_cost(grid, (0, 0), (2, 2)) == 4"
+    },
+    {
+     "name": "cheapest is not the shortest -- BFS would fail",
+     "src": "# The direct two-step route costs 20; going the long way round costs 5.\ngrid = [\n    [1, 10, 1],\n    [1, 10, 1],\n    [1, 1, 1],\n]\nassert min_travel_cost(grid, (0, 0), (0, 2)) == 6"
+    },
+    {
+     "name": "terrain map against a Dijkstra oracle",
+     "src": "TERRAIN = [[1, 1, 1, 9, 1, 1, 1], [1, 9, 1, 9, 1, 9, 1], [1, 9, 1, 1, 1, 9, 1], [1, 9, 9, 9, 9, 9, 1], [1, 1, 1, 0, 1, 1, 1], [9, 9, 1, 0, 1, 9, 9], [1, 1, 1, 0, 1, 1, 1]]\nassert min_travel_cost(TERRAIN, (0, 0), (6, 6)) == 20\nassert min_travel_cost(TERRAIN, (0, 0), (2, 4)) == 6\nassert min_travel_cost(TERRAIN, (0, 0), (4, 3)) is None"
+    },
+    {
+     "name": "random grids against a reference implementation",
+     "src": "import heapq\nimport random\nrandom.seed(23)\n\n\ndef reference(grid, start, goal):\n    rows, cols = len(grid), len(grid[0])\n    if grid[start[0]][start[1]] == 0 or grid[goal[0]][goal[1]] == 0:\n        return None\n    dist = {start: 0}\n    pq = [(0, start)]\n    while pq:\n        d, u = heapq.heappop(pq)\n        if u == goal:\n            return d\n        if d > dist.get(u, float(\"inf\")):\n            continue\n        for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n            nr, nc = u[0] + dr, u[1] + dc\n            if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != 0:\n                nd = d + grid[nr][nc]\n                if nd < dist.get((nr, nc), float(\"inf\")):\n                    dist[(nr, nc)] = nd\n                    heapq.heappush(pq, (nd, (nr, nc)))\n    return None\n\n\nfor trial in range(120):\n    rows = random.randint(1, 6)\n    cols = random.randint(1, 6)\n    grid = [[random.choice([0, 1, 1, 2, 5, 9]) for _ in range(cols)]\n            for _ in range(rows)]\n    start = (random.randrange(rows), random.randrange(cols))\n    goal = (random.randrange(rows), random.randrange(cols))\n    assert min_travel_cost(grid, start, goal) == reference(grid, start, goal), \\\n        (grid, start, goal)"
+    }
+   ]
+  },
+  {
+   "id": "weighted-grid-path",
+   "track": "A* Solvers",
+   "title": "The Route Itself, With a Heuristic",
+   "difficulty": "medium",
+   "points": 20,
+   "blurb": "Same terrain, but return the path -- and scale the heuristic so it stays admissible.",
+   "statement": "<p>Same terrain model as the previous problem: four-way movement, entering a\ncell costs <code>grid[r][c]</code>, and <code>0</code> is a wall. This time\nreturn the route.</p>\n\n<p>Write <code>cheapest_path(grid, start, goal)</code>, returning the list of\n<code>(row, col)</code> tuples along a cheapest route, including both the\nstart and the goal. If several routes tie, any of them is fine. Return\n<code>None</code> when there is no route, or when an endpoint is a wall.</p>\n\n<p>Now use a heuristic &mdash; and be careful scaling it. Manhattan distance\ncounts <em>steps</em>, but a step here costs terrain, so raw Manhattan\ndistance is wrong in both directions depending on the map. Multiply it by the\nsmallest passable value anywhere on the grid and it becomes a genuine lower\nbound on the remaining cost, since no step can ever be cheaper than that.</p>\n\n<p>Reconstruct the route from a dict of predecessors rather than carrying a\ngrowing list in every queue entry. Copying a path per successor turns a linear\nsearch into a quadratic one.</p>",
+   "examples": ">>> flat = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]\n>>> path = cheapest_path(flat, (0, 0), (0, 2))\n>>> path[0], path[-1], len(path)\n((0, 0), (0, 2), 3)\n>>> pricey = [[1, 9, 1], [1, 9, 1], [1, 1, 1]]\n>>> cheapest_path(pricey, (0, 0), (0, 2))\n[(0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (1, 2), (0, 2)]\n>>> print(cheapest_path([[1, 0, 1]], (0, 0), (0, 2)))\nNone",
+   "starter": "def cheapest_path(grid, start, goal):\n    pass",
+   "hints": [
+    "Let step = the minimum non-zero value in the whole grid.  Then h(cell) = step * (|dr| + |dc|) to the goal is admissible: every remaining move costs at least `step`.",
+    "Push (g + h, counter, cell) and keep g in a separate dict. The counter is what stops Python comparing two cells when f ties.",
+    "Keep parents[child] = parent, set when the child is first pushed with a strictly better g. When you pop the goal, walk the chain backwards and reverse it."
+   ],
+   "solution": "import heapq\n\n\ndef cheapest_path(grid, start, goal):\n    rows, cols = len(grid), len(grid[0])\n    start, goal = tuple(start), tuple(goal)\n    if grid[start[0]][start[1]] == 0 or grid[goal[0]][goal[1]] == 0:\n        return None\n\n    step = min(v for row in grid for v in row if v != 0)\n\n    def h(cell):\n        return step * (abs(cell[0] - goal[0]) + abs(cell[1] - goal[1]))\n\n    best = {start: 0}\n    parents = {start: None}\n    counter = 0\n    queue = [(h(start), counter, start)]\n    seen = set()\n\n    while queue:\n        _, _, node = heapq.heappop(queue)\n        if node in seen:\n            continue\n        seen.add(node)\n        if node == goal:\n            path = []\n            cur = node\n            while cur is not None:\n                path.append(cur)\n                cur = parents[cur]\n            path.reverse()\n            return path\n        for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n            nr, nc = node[0] + dr, node[1] + dc\n            if not (0 <= nr < rows and 0 <= nc < cols) or grid[nr][nc] == 0:\n                continue\n            child = (nr, nc)\n            if child in seen:\n                continue\n            candidate = best[node] + grid[nr][nc]\n            if candidate < best.get(child, float(\"inf\")):\n                best[child] = candidate\n                parents[child] = node\n                counter += 1\n                heapq.heappush(queue, (candidate + h(child), counter, child))\n    return None",
+   "tests": [
+    {
+     "name": "paths are legal, connected and correctly ended",
+     "src": "def check(grid, start, goal, path):\n    assert path[0] == tuple(start), path\n    assert path[-1] == tuple(goal), path\n    for (r, c) in path:\n        assert grid[r][c] != 0, (\"walks through a wall\", path)\n    for a, b in zip(path, path[1:]):\n        assert abs(a[0] - b[0]) + abs(a[1] - b[1]) == 1, (\"not adjacent\", a, b)\n    return sum(grid[r][c] for (r, c) in path[1:])\n\n\nflat = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]\nassert check(flat, (0, 0), (2, 2), cheapest_path(flat, (0, 0), (2, 2))) == 4\npricey = [[1, 9, 1], [1, 9, 1], [1, 1, 1]]\nassert check(pricey, (0, 0), (0, 2), cheapest_path(pricey, (0, 0), (0, 2))) == 6"
+    },
+    {
+     "name": "degenerate and impossible cases",
+     "src": "assert cheapest_path([[1, 1], [1, 1]], (0, 0), (0, 0)) == [(0, 0)]\nassert cheapest_path([[1, 0, 1]], (0, 0), (0, 2)) is None\ngrid = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]\nassert cheapest_path(grid, (1, 1), (0, 0)) is None\nassert cheapest_path(grid, (0, 0), (1, 1)) is None"
+    },
+    {
+     "name": "terrain and maze maps hit the oracle cost",
+     "src": "def total(grid, path):\n    return sum(grid[r][c] for (r, c) in path[1:])\n\n\nTERRAIN = [[1, 1, 1, 9, 1, 1, 1], [1, 9, 1, 9, 1, 9, 1], [1, 9, 1, 1, 1, 9, 1], [1, 9, 9, 9, 9, 9, 1], [1, 1, 1, 0, 1, 1, 1], [9, 9, 1, 0, 1, 9, 9], [1, 1, 1, 0, 1, 1, 1]]\nMAZE = [[1, 0, 1, 1, 1], [1, 0, 1, 0, 1], [1, 1, 1, 0, 1], [0, 0, 1, 0, 1], [1, 1, 1, 0, 1]]\np = cheapest_path(TERRAIN, (0, 0), (6, 6))\nassert total(TERRAIN, p) == 20, total(TERRAIN, p)\np = cheapest_path(TERRAIN, (0, 0), (2, 4))\nassert total(TERRAIN, p) == 6\nassert cheapest_path(TERRAIN, (0, 0), (4, 3)) is None\np = cheapest_path(MAZE, (0, 0), (4, 4))\nassert total(MAZE, p) == 12\nassert cheapest_path(MAZE, (0, 0), (3, 0)) is None"
+    },
+    {
+     "name": "random grids: legal and provably optimal",
+     "src": "import heapq\nimport random\nrandom.seed(31)\n\n\ndef oracle(grid, start, goal):\n    rows, cols = len(grid), len(grid[0])\n    if grid[start[0]][start[1]] == 0 or grid[goal[0]][goal[1]] == 0:\n        return None\n    dist = {start: 0}\n    pq = [(0, start)]\n    while pq:\n        d, u = heapq.heappop(pq)\n        if u == goal:\n            return d\n        if d > dist.get(u, float(\"inf\")):\n            continue\n        for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n            nr, nc = u[0] + dr, u[1] + dc\n            if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != 0:\n                nd = d + grid[nr][nc]\n                if nd < dist.get((nr, nc), float(\"inf\")):\n                    dist[(nr, nc)] = nd\n                    heapq.heappush(pq, (nd, (nr, nc)))\n    return None\n\n\nfor trial in range(150):\n    rows = random.randint(1, 6)\n    cols = random.randint(1, 6)\n    grid = [[random.choice([0, 1, 1, 3, 7]) for _ in range(cols)]\n            for _ in range(rows)]\n    start = (random.randrange(rows), random.randrange(cols))\n    goal = (random.randrange(rows), random.randrange(cols))\n    want = oracle(grid, start, goal)\n    got = cheapest_path(grid, start, goal)\n    if want is None:\n        assert got is None, (grid, start, goal, got)\n        continue\n    assert got is not None, (grid, start, goal)\n    assert got[0] == start and got[-1] == goal\n    for a, b in zip(got, got[1:]):\n        assert abs(a[0] - b[0]) + abs(a[1] - b[1]) == 1\n    for (r, c) in got:\n        assert grid[r][c] != 0\n    assert sum(grid[r][c] for (r, c) in got[1:]) == want, (grid, start, goal)"
+    }
+   ]
+  },
+  {
+   "id": "knight-shortest-path",
+   "track": "A* Solvers",
+   "title": "Knight Across a Damaged Board",
+   "difficulty": "medium",
+   "points": 20,
+   "blurb": "Chess-knight distance with squares removed, and a heuristic that survives the holes.",
+   "statement": "<p>A knight sits on an <code>n</code> &times; <code>n</code> board and moves in\nthe usual L: two squares one way, one square the other, eight options in all.\nSome squares are damaged and cannot be landed on. A knight may jump\n<em>over</em> a damaged square &mdash; only the landing square matters.</p>\n\n<p>Write <code>knight_distance(n, start, goal, blocked)</code>, returning the\nfewest moves needed, or <code>None</code> if the goal cannot be reached or\neither endpoint is damaged. <code>blocked</code> is a list of\n<code>(row, col)</code> tuples.</p>\n\n<p>Every move costs 1, so an admissible heuristic must never claim more moves\nthan are really needed. With <code>dr</code> and <code>dc</code> the row and\ncolumn gaps, a safe estimate is</p>\n\n<pre>max(ceil(dr / 2), ceil(dc / 2), ceil((dr + dc) / 3))</pre>\n\n<p>No single knight move closes more than 2 in either axis, nor more than 3\nacross both combined &mdash; which is exactly why each of those three terms is\na lower bound. Damaged squares only ever make the true distance larger, so\nthe estimate stays admissible however the board is chewed up.</p>",
+   "examples": ">>> knight_distance(8, (0, 0), (0, 0), [])\n0\n>>> knight_distance(8, (0, 0), (1, 2), [])\n1\n>>> knight_distance(8, (0, 0), (1, 1), [])\n4\n>>> print(knight_distance(3, (0, 0), (1, 1), []))\nNone",
+   "starter": "def knight_distance(n, start, goal, blocked):\n    pass",
+   "hints": [
+    "Turn blocked into a set of tuples first. Membership tests run at every generated move, and scanning a list each time is what makes a search like this crawl.",
+    "The eight offsets are the pairs (+-1, +-2) and (+-2, +-1). Generate them once outside the loop.",
+    "Because every move costs 1, plain BFS already returns the optimum here -- A* with the heuristic above simply gets there having expanded fewer squares. Either earns the points, but do the goal test when you dequeue."
+   ],
+   "solution": "import heapq\nfrom math import ceil\n\n\ndef knight_distance(n, start, goal, blocked):\n    start, goal = tuple(start), tuple(goal)\n    walls = set(map(tuple, blocked))\n    if start in walls or goal in walls:\n        return None\n    if not (0 <= start[0] < n and 0 <= start[1] < n):\n        return None\n    if not (0 <= goal[0] < n and 0 <= goal[1] < n):\n        return None\n\n    jumps = ((1, 2), (2, 1), (-1, 2), (-2, 1),\n             (1, -2), (2, -1), (-1, -2), (-2, -1))\n\n    def h(cell):\n        dr = abs(cell[0] - goal[0])\n        dc = abs(cell[1] - goal[1])\n        return max(ceil(dr / 2), ceil(dc / 2), ceil((dr + dc) / 3))\n\n    best = {start: 0}\n    counter = 0\n    queue = [(h(start), counter, start)]\n    seen = set()\n    while queue:\n        _, _, node = heapq.heappop(queue)\n        if node in seen:\n            continue\n        seen.add(node)\n        if node == goal:\n            return best[node]\n        for dr, dc in jumps:\n            nr, nc = node[0] + dr, node[1] + dc\n            child = (nr, nc)\n            if not (0 <= nr < n and 0 <= nc < n) or child in walls:\n                continue\n            candidate = best[node] + 1\n            if candidate < best.get(child, float(\"inf\")):\n                best[child] = candidate\n                counter += 1\n                heapq.heappush(queue, (candidate + h(child), counter, child))\n    return None",
+   "tests": [
+    {
+     "name": "the worked examples",
+     "src": "assert knight_distance(8, (0, 0), (0, 0), []) == 0\nassert knight_distance(8, (0, 0), (1, 2), []) == 1\nassert knight_distance(8, (0, 0), (1, 1), []) == 4\nassert knight_distance(3, (0, 0), (1, 1), []) is None"
+    },
+    {
+     "name": "open-board distances",
+     "src": "assert knight_distance(8, (0, 0), (7, 7), []) == 6\nassert knight_distance(8, (0, 0), (1, 1), []) == 4\nassert knight_distance(8, (3, 3), (3, 3), []) == 0\nassert knight_distance(8, (0, 0), (2, 1), []) == 1"
+    },
+    {
+     "name": "damaged squares",
+     "src": "assert knight_distance(5, (0, 0), (4, 4),\n                       [(1, 2), (2, 1), (2, 3), (3, 2)]) == None\n# Endpoints on damage are rejected outright.\nassert knight_distance(8, (0, 0), (4, 4), [(0, 0)]) is None\nassert knight_distance(8, (0, 0), (4, 4), [(4, 4)]) is None\n# Sealing off every square the knight could first reach traps it.\nassert knight_distance(8, (0, 0), (7, 7), [(1, 2), (2, 1)]) is None"
+    },
+    {
+     "name": "agrees with breadth-first search everywhere",
+     "src": "from collections import deque\nimport random\nrandom.seed(41)\n\nJUMPS = ((1, 2), (2, 1), (-1, 2), (-2, 1),\n         (1, -2), (2, -1), (-1, -2), (-2, -1))\n\n\ndef bfs(n, start, goal, blocked):\n    walls = set(map(tuple, blocked))\n    if tuple(start) in walls or tuple(goal) in walls:\n        return None\n    seen = {tuple(start)}\n    q = deque([(tuple(start), 0)])\n    while q:\n        (r, c), d = q.popleft()\n        if (r, c) == tuple(goal):\n            return d\n        for dr, dc in JUMPS:\n            nr, nc = r + dr, c + dc\n            if (0 <= nr < n and 0 <= nc < n\n                    and (nr, nc) not in walls and (nr, nc) not in seen):\n                seen.add((nr, nc))\n                q.append(((nr, nc), d + 1))\n    return None\n\n\nfor trial in range(120):\n    n = random.randint(3, 7)\n    cells = [(r, c) for r in range(n) for c in range(n)]\n    blocked = random.sample(cells, k=random.randint(0, n))\n    start = random.choice(cells)\n    goal = random.choice(cells)\n    assert knight_distance(n, start, goal, blocked) == bfs(n, start, goal, blocked), \\\n        (n, start, goal, blocked)"
+    },
+    {
+     "name": "the suggested heuristic really is admissible",
+     "src": "from collections import deque\nfrom math import ceil\n\nJUMPS = ((1, 2), (2, 1), (-1, 2), (-2, 1),\n         (1, -2), (2, -1), (-1, -2), (-2, -1))\nn = 8\ngoal = (5, 4)\ndist = {goal: 0}\nq = deque([goal])\nwhile q:\n    r, c = q.popleft()\n    for dr, dc in JUMPS:\n        nr, nc = r + dr, c + dc\n        if 0 <= nr < n and 0 <= nc < n and (nr, nc) not in dist:\n            dist[(nr, nc)] = dist[(r, c)] + 1\n            q.append((nr, nc))\n\nfor (r, c), true_cost in dist.items():\n    dr, dc = abs(r - goal[0]), abs(c - goal[1])\n    h = max(ceil(dr / 2), ceil(dc / 2), ceil((dr + dc) / 3))\n    assert h <= true_cost, ((r, c), h, true_cost)\n    assert knight_distance(n, (r, c), goal, []) == true_cost"
+    }
+   ]
+  },
+  {
+   "id": "pancake-flip",
+   "track": "A* Solvers",
+   "title": "Sorting Pancakes by the Spatula",
+   "difficulty": "hard",
+   "points": 25,
+   "blurb": "Prefix reversals, and the gap heuristic that makes the search tractable.",
+   "statement": "<p>A stack of pancakes is a list of distinct sizes, <code>1</code> smallest,\nread top to bottom. The only tool is a spatula: slide it under the top\n<code>k</code> pancakes and flip that whole prefix over. The goal is\nascending order, smallest on top.</p>\n\n<p>Write <code>pancake_sort(stack)</code>, returning a list of prefix lengths\n&mdash; each between <code>2</code> and <code>len(stack)</code> &mdash; that\nsorts the stack in the <strong>fewest possible flips</strong>. Any minimal\nanswer is accepted. An already-sorted stack returns <code>[]</code>.</p>\n\n<p>The branching factor is only <code>n - 1</code>, but depth grows fast, so\nyou want a real heuristic. The standard one is the <strong>gap\nheuristic</strong>: append a virtual pancake of size <code>n + 1</code> below\nthe stack, then count adjacent pairs whose sizes differ by more than 1. A\nsingle flip can repair at most one such gap, so the count never overestimates\n&mdash; it is admissible.</p>",
+   "examples": ">>> pancake_sort([1, 2, 3])\n[]\n>>> pancake_sort([2, 1])\n[2]\n>>> pancake_sort([3, 1, 2])\n[3, 2]\n>>> len(pancake_sort([4, 3, 2, 1]))\n1",
+   "starter": "def pancake_sort(stack):\n    pass",
+   "hints": [
+    "A flip of length k maps state to state[:k][::-1] + state[k:]. Tuples make good states: hashable, so they drop straight into a visited set.",
+    "Gap count: walk the sequence tuple(stack) + (n + 1,) and count positions where abs(a[i] - a[i+1]) != 1. That is your h.",
+    "Store parents rather than whole flip lists in the queue, then walk the chain back from the goal. And keep the usual counter in the heap tuple so two states with equal f never get compared."
+   ],
+   "solution": "import heapq\n\n\ndef _gaps(state):\n    n = len(state)\n    extended = tuple(state) + (n + 1,)\n    return sum(1 for i in range(n)\n               if abs(extended[i] - extended[i + 1]) != 1)\n\n\ndef pancake_sort(stack):\n    start = tuple(stack)\n    goal = tuple(sorted(start))\n    if start == goal:\n        return []\n\n    n = len(start)\n    best = {start: 0}\n    parents = {start: None}\n    counter = 0\n    queue = [(_gaps(start), counter, start)]\n    seen = set()\n\n    while queue:\n        _, _, state = heapq.heappop(queue)\n        if state in seen:\n            continue\n        seen.add(state)\n        if state == goal:\n            flips = []\n            cur = state\n            while parents[cur] is not None:\n                prev, k = parents[cur]\n                flips.append(k)\n                cur = prev\n            flips.reverse()\n            return flips\n        for k in range(2, n + 1):\n            child = state[:k][::-1] + state[k:]\n            if child in seen:\n                continue\n            candidate = best[state] + 1\n            if candidate < best.get(child, float(\"inf\")):\n                best[child] = candidate\n                parents[child] = (state, k)\n                counter += 1\n                heapq.heappush(\n                    queue, (candidate + _gaps(child), counter, child))\n    return None",
+   "tests": [
+    {
+     "name": "worked examples and the trivial case",
+     "src": "def replay(stack, flips):\n    cur = list(stack)\n    for k in flips:\n        assert 2 <= k <= len(cur), (\"illegal flip length\", k)\n        cur[:k] = cur[:k][::-1]\n    return cur\n\n\nassert pancake_sort([1, 2, 3]) == []\nassert pancake_sort([1]) == []\nassert pancake_sort([]) == []\nassert replay([2, 1], pancake_sort([2, 1])) == [1, 2]\nassert len(pancake_sort([2, 1])) == 1\nassert replay([3, 1, 2], pancake_sort([3, 1, 2])) == [1, 2, 3]\nassert len(pancake_sort([3, 1, 2])) == 2"
+    },
+    {
+     "name": "a fully reversed stack takes a single flip",
+     "src": "def replay(stack, flips):\n    cur = list(stack)\n    for k in flips:\n        cur[:k] = cur[:k][::-1]\n    return cur\n\n\nflips = pancake_sort([4, 3, 2, 1])\nassert replay([4, 3, 2, 1], flips) == [1, 2, 3, 4]\nassert len(flips) == 1 == 1"
+    },
+    {
+     "name": "larger stacks reach the oracle's optimum",
+     "src": "def replay(stack, flips):\n    cur = list(stack)\n    for k in flips:\n        assert 2 <= k <= len(cur)\n        cur[:k] = cur[:k][::-1]\n    return cur\n\n\nfor stack, want in (([2, 5, 3, 1, 4], 5), ([6, 2, 4, 1, 5, 3], 6)):\n    flips = pancake_sort(stack)\n    assert replay(stack, flips) == sorted(stack), (stack, flips)\n    assert len(flips) == want, (stack, len(flips), want)"
+    },
+    {
+     "name": "every permutation of five, against breadth-first search",
+     "src": "from collections import deque\nfrom itertools import permutations\n\n\ndef oracle(stack):\n    start = tuple(stack)\n    goal = tuple(sorted(start))\n    if start == goal:\n        return 0\n    seen = {start}\n    q = deque([(start, 0)])\n    while q:\n        state, d = q.popleft()\n        for k in range(2, len(state) + 1):\n            nxt = state[:k][::-1] + state[k:]\n            if nxt == goal:\n                return d + 1\n            if nxt not in seen:\n                seen.add(nxt)\n                q.append((nxt, d + 1))\n    return None\n\n\nfor perm in permutations(range(1, 6)):\n    flips = pancake_sort(list(perm))\n    cur = list(perm)\n    for k in flips:\n        assert 2 <= k <= 5, (\"illegal flip length\", k)\n        cur[:k] = cur[:k][::-1]\n    assert cur == sorted(perm), (perm, flips)\n    assert len(flips) == oracle(perm), (perm, len(flips), oracle(perm))"
+    },
+    {
+     "name": "the gap heuristic never overestimates",
+     "src": "from collections import deque\nfrom itertools import permutations\n\n\ndef gaps(state):\n    n = len(state)\n    ext = tuple(state) + (n + 1,)\n    return sum(1 for i in range(n) if abs(ext[i] - ext[i + 1]) != 1)\n\n\ngoal = (1, 2, 3, 4, 5)\ndist = {goal: 0}\nq = deque([goal])\nwhile q:\n    state = q.popleft()\n    for k in range(2, 6):\n        nxt = state[:k][::-1] + state[k:]\n        if nxt not in dist:\n            dist[nxt] = dist[state] + 1\n            q.append(nxt)\n\nassert len(dist) == 120\nfor state, true_cost in dist.items():\n    assert gaps(state) <= true_cost, (state, gaps(state), true_cost)"
+    }
+   ]
+  },
+  {
+   "id": "lock-all-optimal",
+   "track": "Iterative Deepening",
+   "title": "Every Shortest Way to Open the Lock",
+   "difficulty": "medium",
+   "points": 20,
+   "blurb": "Iterative deepening that collects all optimal solutions, not just the first one found.",
+   "statement": "<p>A combination lock has several wheels, each showing a digit\n<code>0</code>&ndash;<code>9</code> and wrapping around, so\n<code>9 + 1 = 0</code> and <code>0 - 1 = 9</code>. One move turns exactly one\nwheel by one click. Some codes are jammed and the lock seizes if you ever\nland on one.</p>\n\n<p>States are strings such as <code>\"000\"</code>. A move is a tuple\n<code>(index, delta)</code> where <code>delta</code> is <code>1</code> or\n<code>-1</code>.</p>\n\n<p>Write <code>all_shortest_unlocks(start, target, deadends)</code>, returning\na list of <strong>every</strong> shortest move sequence from\n<code>start</code> to <code>target</code>. Order among the sequences does not\nmatter. Return <code>[]</code> when the target is unreachable or when either\nendpoint is jammed; return <code>[[]]</code> when start and target are already\nequal, since the empty sequence is the one optimal answer.</p>\n\n<p>Use iterative deepening: run a depth-limited search at depth 0, then 1,\nthen 2, and stop at the first depth that yields anything &mdash; collecting\neverything found at that depth. Stopping there is what makes the answers\noptimal; carrying on to the next depth would sweep up longer solutions too.</p>",
+   "examples": ">>> all_shortest_unlocks(\"000\", \"000\", [])\n[[]]\n>>> all_shortest_unlocks(\"000\", \"001\", [])\n[[(2, 1)]]\n>>> sorted(map(tuple, all_shortest_unlocks(\"00\", \"11\", [])))\n[((0, 1), (1, 1)), ((1, 1), (0, 1))]\n>>> all_shortest_unlocks(\"000\", \"111\", [\"000\"])\n[]",
+   "starter": "def all_shortest_unlocks(start, target, deadends):\n    pass",
+   "hints": [
+    "Write a recursive helper taking (state, limit, moves). When len(moves) == limit, check whether state is the target and record a copy of moves if so; otherwise recurse on each legal successor.",
+    "Do not carry a visited set across depths -- a state reachable in four moves along one route may be on a different optimal route, and pruning it would lose solutions. Depth alone bounds the work.",
+    "The outer loop resets the results list at each new limit, runs the helper, and returns as soon as the list is non-empty. Guard the endpoints against deadends before you start."
+   ],
+   "solution": "def all_shortest_unlocks(start, target, deadends):\n    dead = set(deadends)\n    if start in dead or target in dead:\n        return []\n\n    def successors(state):\n        for i in range(len(state)):\n            for delta in (1, -1):\n                digit = (int(state[i]) + delta) % 10\n                nxt = state[:i] + str(digit) + state[i + 1:]\n                if nxt not in dead:\n                    yield (i, delta), nxt\n\n    def walk(state, limit, moves):\n        if len(moves) == limit:\n            if state == target:\n                found.append(list(moves))\n            return\n        for move, nxt in successors(state):\n            moves.append(move)\n            walk(nxt, limit, moves)\n            moves.pop()\n\n    limit = 0\n    ceiling = 5 * len(start) + 1\n    while limit <= ceiling:\n        found = []\n        walk(start, limit, [])\n        if found:\n            return found\n        limit += 1\n    return []",
+   "tests": [
+    {
+     "name": "trivial and impossible cases",
+     "src": "assert all_shortest_unlocks(\"000\", \"000\", []) == [[]]\nassert all_shortest_unlocks(\"000\", \"111\", [\"000\"]) == []\nassert all_shortest_unlocks(\"000\", \"111\", [\"111\"]) == []\nassert all_shortest_unlocks(\"00\", \"00\", []) == [[]]"
+    },
+    {
+     "name": "single clicks, including the wrap-around",
+     "src": "assert all_shortest_unlocks(\"000\", \"001\", []) == [[(2, 1)]]\nassert all_shortest_unlocks(\"000\", \"009\", []) == [[(2, -1)]]\nassert all_shortest_unlocks(\"090\", \"000\", []) == [[(1, 1)]]\nassert all_shortest_unlocks(\"900\", \"000\", []) == [[(0, 1)]]"
+    },
+    {
+     "name": "all orderings of independent clicks are returned",
+     "src": "got = sorted(map(tuple, all_shortest_unlocks(\"00\", \"11\", [])))\nassert got == [((0, 1), (1, 1)), ((1, 1), (0, 1))], got\nassert len(all_shortest_unlocks(\"000\", \"012\", [])) == 3\nassert len(all_shortest_unlocks(\"000\", \"111\", [])) == 6"
+    },
+    {
+     "name": "jammed codes prune routes without losing optimal ones",
+     "src": "routes = all_shortest_unlocks(\"000\", \"012\", [\"010\", \"001\"])\nassert len(routes) == 13, len(routes)\nfor route in routes:\n    state = \"000\"\n    for (i, delta) in route:\n        digit = (int(state[i]) + delta) % 10\n        state = state[:i] + str(digit) + state[i + 1:]\n        assert state not in (\"010\", \"001\"), (\"route runs through a deadend\", route)\n    assert state == \"012\", (route, state)"
+    },
+    {
+     "name": "results replay correctly and share one optimal length",
+     "src": "from collections import deque\nimport random\nrandom.seed(29)\n\n\ndef bfs_len(start, target, dead):\n    dead = set(dead)\n    if start in dead or target in dead:\n        return None\n    if start == target:\n        return 0\n    seen = {start}\n    q = deque([(start, 0)])\n    while q:\n        state, d = q.popleft()\n        for i in range(len(state)):\n            for delta in (1, -1):\n                digit = (int(state[i]) + delta) % 10\n                nxt = state[:i] + str(digit) + state[i + 1:]\n                if nxt in dead or nxt in seen:\n                    continue\n                if nxt == target:\n                    return d + 1\n                seen.add(nxt)\n                q.append((nxt, d + 1))\n    return None\n\n\nfor trial in range(40):\n    start = \"\".join(random.choice(\"012\") for _ in range(2))\n    target = \"\".join(random.choice(\"012\") for _ in range(2))\n    dead = [s for s in (\"11\", \"21\", \"12\") if random.random() < 0.4]\n    routes = all_shortest_unlocks(start, target, dead)\n    want = bfs_len(start, target, dead)\n    if want is None:\n        assert routes == [], (start, target, dead, routes)\n        continue\n    assert routes, (start, target, dead)\n    assert len({len(r) for r in routes}) == 1\n    assert len(routes[0]) == want, (start, target, dead, len(routes[0]), want)\n    seqs = set()\n    for route in routes:\n        state = start\n        for (i, delta) in route:\n            digit = (int(state[i]) + delta) % 10\n            state = state[:i] + str(digit) + state[i + 1:]\n            assert state not in dead\n        assert state == target, (start, target, route)\n        seqs.add(tuple(route))\n    assert len(seqs) == len(routes), \"duplicate sequences returned\""
+    }
+   ]
+  },
+  {
+   "id": "hanoi-anywhere",
+   "track": "Iterative Deepening",
+   "title": "Hanoi Between Two Arbitrary Piles",
+   "difficulty": "hard",
+   "points": 25,
+   "blurb": "Not the textbook tower: any starting arrangement, any target, shortest route.",
+   "statement": "<p>Three pegs, <code>n</code> disks of distinct sizes. A configuration is a\ntuple where entry <code>i</code> gives the peg holding disk <code>i + 1</code>,\nso disk 1 is the smallest and <code>(0, 0, 0)</code> means all three disks are\nstacked on peg 0. On each peg the disks are necessarily ordered largest at the\nbottom, so the configuration alone describes the state completely.</p>\n\n<p>One move takes the <strong>top</strong> disk off a peg &mdash; the smallest\ndisk currently on it &mdash; and drops it on another peg, but only if that peg\nis empty or its top disk is larger.</p>\n\n<p>Write <code>hanoi_solve(start, goal)</code>, returning a shortest list of\n<code>(from_peg, to_peg)</code> moves. Any minimal answer is accepted, and an\nalready-solved configuration returns <code>[]</code>. Every configuration is\nreachable from every other, so you never need to report failure.</p>\n\n<p>The classic <code>2**n - 1</code> formula only covers one full pile moving\nto another. Arbitrary endpoints need a real search. A useful admissible\nheuristic is the count of disks not already on their target peg &mdash; each\nsuch disk has to move at least once.</p>",
+   "examples": ">>> hanoi_solve((0, 0), (0, 0))\n[]\n>>> hanoi_solve((0,), (2,))\n[(0, 2)]\n>>> len(hanoi_solve((0, 0, 0), (2, 2, 2)))\n7\n>>> len(hanoi_solve((0, 1, 2), (1, 1, 1)))\n7",
+   "starter": "def hanoi_solve(start, goal):\n    pass",
+   "hints": [
+    "To find each peg's top disk, scan the configuration once and keep the FIRST disk index seen for each peg -- smaller index means smaller disk, which is the one on top.",
+    "A move from peg p to peg d is legal when d holds no disk at all, or when d's top disk index is greater than the disk you are lifting.",
+    "The number of disks sitting on the wrong peg is admissible, since each of them needs at least one move. It is weak but sound, and it still beats searching blind."
+   ],
+   "solution": "import heapq\n\n\ndef _tops(state):\n    tops = {}\n    for disk, peg in enumerate(state):\n        if peg not in tops:\n            tops[peg] = disk\n    return tops\n\n\ndef _moves(state):\n    tops = _tops(state)\n    for peg, disk in tops.items():\n        for dest in range(3):\n            if dest == peg:\n                continue\n            if dest in tops and tops[dest] < disk:\n                continue\n            lst = list(state)\n            lst[disk] = dest\n            yield (peg, dest), tuple(lst)\n\n\ndef hanoi_solve(start, goal):\n    start, goal = tuple(start), tuple(goal)\n    if start == goal:\n        return []\n\n    def h(state):\n        return sum(1 for a, b in zip(state, goal) if a != b)\n\n    best = {start: 0}\n    parents = {start: None}\n    counter = 0\n    queue = [(h(start), counter, start)]\n    seen = set()\n\n    while queue:\n        _, _, state = heapq.heappop(queue)\n        if state in seen:\n            continue\n        seen.add(state)\n        if state == goal:\n            moves = []\n            cur = state\n            while parents[cur] is not None:\n                prev, move = parents[cur]\n                moves.append(move)\n                cur = prev\n            moves.reverse()\n            return moves\n        for move, child in _moves(state):\n            if child in seen:\n                continue\n            candidate = best[state] + 1\n            if candidate < best.get(child, float(\"inf\")):\n                best[child] = candidate\n                parents[child] = (state, move)\n                counter += 1\n                heapq.heappush(queue, (candidate + h(child), counter, child))\n    return None",
+   "tests": [
+    {
+     "name": "trivial cases and single disks",
+     "src": "assert hanoi_solve((0, 0), (0, 0)) == []\nassert hanoi_solve((0,), (0,)) == []\nassert hanoi_solve((0,), (2,)) == [(0, 2)]\nassert hanoi_solve((1,), (0,)) == [(1, 0)]"
+    },
+    {
+     "name": "the classic tower matches 2**n - 1",
+     "src": "def replay(start, moves):\n    state = list(start)\n    for (src, dst) in moves:\n        tops = {}\n        for disk, peg in enumerate(state):\n            if peg not in tops:\n                tops[peg] = disk\n        assert src in tops, (\"no disk on the source peg\", src, state)\n        disk = tops[src]\n        assert src != dst, \"move to the same peg\"\n        assert dst not in tops or tops[dst] > disk, (\"onto a smaller disk\", state)\n        state[disk] = dst\n    return tuple(state)\n\n\nfor n in (1, 2, 3, 4):\n    start = tuple([0] * n)\n    goal = tuple([2] * n)\n    moves = hanoi_solve(start, goal)\n    assert replay(start, moves) == goal, (n, moves)\n    assert len(moves) == 2 ** n - 1, (n, len(moves))\nassert len(hanoi_solve((0, 0, 0, 0), (2, 2, 2, 2))) == 15\nassert len(hanoi_solve((0, 0, 0, 0, 0), (1, 1, 1, 1, 1))) == 31"
+    },
+    {
+     "name": "arbitrary endpoints hit the oracle length",
+     "src": "def replay(start, moves):\n    state = list(start)\n    for (src, dst) in moves:\n        tops = {}\n        for disk, peg in enumerate(state):\n            if peg not in tops:\n                tops[peg] = disk\n        assert src in tops and src != dst\n        disk = tops[src]\n        assert dst not in tops or tops[dst] > disk\n        state[disk] = dst\n    return tuple(state)\n\n\nfor start, goal, want in (((0, 1, 2, 0), (1, 1, 1, 1), 10),\n                          ((2, 0, 1, 1), (0, 2, 2, 0), 7)):\n    moves = hanoi_solve(start, goal)\n    assert replay(start, moves) == goal, (start, goal, moves)\n    assert len(moves) == want, (start, goal, len(moves), want)"
+    },
+    {
+     "name": "every three-disk pair, against breadth-first search",
+     "src": "from collections import deque\nfrom itertools import product\n\n\ndef tops_of(state):\n    tops = {}\n    for disk, peg in enumerate(state):\n        if peg not in tops:\n            tops[peg] = disk\n    return tops\n\n\ndef succ(state):\n    tops = tops_of(state)\n    for peg, disk in tops.items():\n        for dest in range(3):\n            if dest == peg or (dest in tops and tops[dest] < disk):\n                continue\n            lst = list(state)\n            lst[disk] = dest\n            yield (peg, dest), tuple(lst)\n\n\ndef bfs_len(start, goal):\n    if start == goal:\n        return 0\n    seen = {start}\n    q = deque([(start, 0)])\n    while q:\n        state, d = q.popleft()\n        for _, nxt in succ(state):\n            if nxt == goal:\n                return d + 1\n            if nxt not in seen:\n                seen.add(nxt)\n                q.append((nxt, d + 1))\n    return None\n\n\nstates = list(product(range(3), repeat=3))\nfor start in states:\n    for goal in states:\n        moves = hanoi_solve(start, goal)\n        state = list(start)\n        for (src, dst) in moves:\n            tops = tops_of(tuple(state))\n            assert src in tops and src != dst, (start, goal, moves)\n            disk = tops[src]\n            assert dst not in tops or tops[dst] > disk, (start, goal, moves)\n            state[disk] = dst\n        assert tuple(state) == goal, (start, goal, moves)\n        assert len(moves) == bfs_len(start, goal), (start, goal, len(moves))"
+    },
+    {
+     "name": "the wrong-peg count is admissible",
+     "src": "from collections import deque\nfrom itertools import product\n\n\ndef tops_of(state):\n    tops = {}\n    for disk, peg in enumerate(state):\n        if peg not in tops:\n            tops[peg] = disk\n    return tops\n\n\ndef succ(state):\n    tops = tops_of(state)\n    for peg, disk in tops.items():\n        for dest in range(3):\n            if dest == peg or (dest in tops and tops[dest] < disk):\n                continue\n            lst = list(state)\n            lst[disk] = dest\n            yield tuple(lst)\n\n\ngoal = (1, 1, 1, 1)\ndist = {goal: 0}\nq = deque([goal])\nwhile q:\n    cur = q.popleft()\n    for nxt in succ(cur):\n        if nxt not in dist:\n            dist[nxt] = dist[cur] + 1\n            q.append(nxt)\n\nassert len(dist) == 81\nfor state, true_cost in dist.items():\n    h = sum(1 for a, b in zip(state, goal) if a != b)\n    assert h <= true_cost, (state, h, true_cost)"
+    }
+   ]
+  },
+  {
+   "id": "tile-all-optimal",
+   "track": "Iterative Deepening",
+   "title": "Every Optimal Way to Solve the Tiles",
+   "difficulty": "hard",
+   "points": 25,
+   "blurb": "The homework's IDDFS solver, restated: yield all optimal solutions, not just one.",
+   "statement": "<p>This one is deliberately the Homework 3 problem rather than a variation of\nit &mdash; worth a second pass from a blank editor, because two of its traps\ncost real time the first time round.</p>\n\n<p>The puzzle is a rectangular board of tiles <code>1</code> to\n<code>r*c - 1</code> with <code>0</code> as the empty space. The solved board\nhas the tiles in row-major order with the space in the lower-right corner. A\nmove slides the empty space one square, named from the space's point of view:\n<code>\"up\"</code>, <code>\"down\"</code>, <code>\"left\"</code>,\n<code>\"right\"</code>.</p>\n\n<p>You write the whole class from an empty skeleton &mdash;\n<code>__init__</code>, <code>get_board</code>, <code>perform_move</code>,\n<code>is_solved</code>, <code>copy</code> and <code>successors</code>, then\nthe solver on top of them. The tests exercise every one of those directly, so\na shortcut in the infrastructure surfaces as a failure rather than passing\nquietly.</p>\n\n<p><code>find_solutions_iddfs(self)</code> must <strong>yield</strong> every\noptimal solution as a list of direction strings. Order among the solutions\ndoes not matter. A solved board yields one solution, the empty list.</p>\n\n<p><code>perform_move</code> returns a Boolean saying whether the move\nhappened, and <code>successors</code> yields <code>(direction,\nnew-puzzle)</code> pairs &mdash; only for moves that actually succeed.\n<code>copy</code> must be deep enough that changing one board leaves the other\nalone.</p>\n\n<p>Use iterative deepening: depth-limited searches at 0 moves, then 1, then 2,\nstopping at the first depth that finds anything and yielding everything found\nthere. You may assume the board is solvable.</p>\n\n<p>Two things to watch, both of which decide whether this finishes at all:</p>\n\n<ul>\n  <li>The helper must recurse on the <strong>successor</strong> board. Recurse\n      on the same board and the puzzle never changes, so no depth ever\n      succeeds and the limit climbs forever.</li>\n  <li>Do <strong>not</strong> carry a visited set across depths. A state\n      reachable in four moves down one route may sit on a different optimal\n      route, and pruning it loses solutions.</li>\n</ul>",
+   "examples": ">>> p = TilePuzzle([[1,2,3], [4,5,6], [7,8,0]])\n>>> p.perform_move(\"up\")\nTrue\n>>> p.get_board()\n[[1, 2, 3], [4, 5, 0], [7, 8, 6]]\n>>> p = TilePuzzle([[1,2,3], [4,5,6], [7,8,0]])\n>>> p.perform_move(\"down\")\nFalse\n>>> for move, new_p in TilePuzzle([[1,2,3], [4,5,6], [7,8,0]]).successors():\n...     print(move, new_p.get_board())\nup [[1, 2, 3], [4, 5, 0], [7, 8, 6]]\nleft [[1, 2, 3], [4, 5, 6], [7, 0, 8]]\n>>> b = [[4,1,2], [0,5,3], [7,8,6]]\n>>> p = TilePuzzle(b)\n>>> solutions = p.find_solutions_iddfs()\n>>> next(solutions)\n['up', 'right', 'right', 'down', 'down']\n>>> b = [[1,2,3], [4,0,8], [7,6,5]]\n>>> p = TilePuzzle(b)\n>>> len(list(p.find_solutions_iddfs()))\n2\n>>> p = TilePuzzle([[1,2,3], [4,5,6], [7,8,0]])\n>>> list(p.find_solutions_iddfs())\n[[]]",
+   "starter": "class TilePuzzle(object):\n\n    def __init__(self, board):\n        pass\n\n    def get_board(self):\n        pass\n\n    def perform_move(self, direction):\n        pass\n\n    def is_solved(self):\n        pass\n\n    def copy(self):\n        pass\n\n    def successors(self):\n        pass\n\n    # Required\n    def find_solutions_iddfs(self):\n        pass",
+   "hints": [
+    "Build the infrastructure first and check it against the examples before touching the solver. successors() must skip moves that fail -- yielding an unchanged board for an illegal move triples the search tree and lets no-op moves into your solutions.",
+    "Write a recursive helper taking (puzzle, limit, moves). When len(moves) == limit, check is_solved() and record a copy of moves if so; otherwise recurse on each successor. Name its first parameter something other than `self` -- shadowing it is how the recurse-on-the-same-board bug hides.",
+    "The outer loop resets the results list at each new limit, runs the helper, and stops the moment the list is non-empty. Stopping there is what makes the answers optimal.",
+    "Skipping the move that undoes the previous one is safe -- no optimal solution ever contains an immediate reversal, since deleting that pair gives a shorter solution. It cuts the branching factor from about 2.7 to about 1.7, which is the difference between seconds and minutes at depth 20."
+   ],
+   "solution": "class TilePuzzle(object):\n\n    def __init__(self, board):\n        self.board = board\n\n    def get_board(self):\n        return self.board\n\n    def perform_move(self, direction):\n        offsets = {\"up\": (-1, 0), \"down\": (1, 0),\n                   \"left\": (0, -1), \"right\": (0, 1)}\n        if direction not in offsets:\n            return False\n        rows, cols = len(self.board), len(self.board[0])\n        dr, dc = offsets[direction]\n        for row in range(rows):\n            for col in range(cols):\n                if self.board[row][col] == 0:\n                    r, c = row + dr, col + dc\n                    if 0 <= r < rows and 0 <= c < cols:\n                        self.board[row][col], self.board[r][c] = (\n                            self.board[r][c], self.board[row][col])\n                        return True\n                    return False\n        return False\n\n    def is_solved(self):\n        flat = [x for row in self.board for x in row]\n        return flat == list(range(1, len(flat))) + [0]\n\n    def copy(self):\n        return TilePuzzle([row.copy() for row in self.board])\n\n    def successors(self):\n        for move in [\"up\", \"down\", \"left\", \"right\"]:\n            board_copy = self.copy()\n            if board_copy.perform_move(move):\n                yield (move, board_copy)\n\n    # Required\n    def find_solutions_iddfs(self):\n\n        opposite = {\"up\": \"down\", \"down\": \"up\",\n                    \"left\": \"right\", \"right\": \"left\"}\n\n        def helper(puzzle, limit, moves):\n            if len(moves) == limit:\n                if puzzle.is_solved():\n                    solutions.append(list(moves))\n                return\n            for move, mod_board in puzzle.successors():\n                if moves and move == opposite[moves[-1]]:\n                    continue\n                helper(mod_board, limit, moves + [move])\n\n        limit = 0\n        while True:\n            solutions = []\n            helper(self, limit, [])\n            if solutions:\n                for solution in solutions:\n                    yield solution\n                return\n            limit += 1",
+   "tests": [
+    {
+     "name": "the homework's own examples",
+     "src": "p = TilePuzzle([[4, 1, 2], [0, 5, 3], [7, 8, 6]])\nassert next(p.find_solutions_iddfs()) == ['up', 'right', 'right', 'down', 'down']\n\np = TilePuzzle([[4, 1, 2], [0, 5, 3], [7, 8, 6]])\nassert sorted(map(tuple, p.find_solutions_iddfs())) == [('up', 'right', 'right', 'down', 'down')]\n\np = TilePuzzle([[1, 2, 3], [4, 0, 8], [7, 6, 5]])\nassert sorted(map(tuple, p.find_solutions_iddfs())) == [('down', 'right', 'up', 'left', 'down', 'right'), ('right', 'down', 'left', 'up', 'right', 'down')]"
+    },
+    {
+     "name": "solved and one-move boards",
+     "src": "p = TilePuzzle([[1, 2, 3], [4, 5, 6], [7, 8, 0]])\nassert list(p.find_solutions_iddfs()) == [[]]\n\np = TilePuzzle([[1, 2], [3, 0]])\nassert list(p.find_solutions_iddfs()) == [[]]\n\np = TilePuzzle([[1, 2, 3], [4, 5, 6], [7, 0, 8]])\nassert list(p.find_solutions_iddfs()) == [['right']]\n\np = TilePuzzle([[1, 2, 0], [4, 5, 3]])\nassert list(p.find_solutions_iddfs()) == [['down']]"
+    },
+    {
+     "name": "it is a generator, not a list",
+     "src": "p = TilePuzzle([[1, 2, 3], [4, 0, 8], [7, 6, 5]])\ngen = p.find_solutions_iddfs()\nassert hasattr(gen, \"__next__\"), \"find_solutions_iddfs should yield, not return a list\"\nfirst = next(gen)\nassert isinstance(first, list) and all(isinstance(m, str) for m in first)"
+    },
+    {
+     "name": "non-square boards",
+     "src": "p = TilePuzzle([[4, 1, 2], [5, 0, 3]])\ngot = sorted(map(tuple, p.find_solutions_iddfs()))\nassert got == [('left', 'up', 'right', 'right', 'down')], got"
+    },
+    {
+     "name": "every solution replays, and they all share one optimal length",
+     "src": "from collections import deque\n\n\ndef optimal_len(board):\n    rows, cols = len(board), len(board[0])\n    start = tuple(v for row in board for v in row)\n    goal = tuple(range(1, rows * cols)) + (0,)\n    if start == goal:\n        return 0\n    seen = {start}\n    q = deque([(start, 0)])\n    while q:\n        state, d = q.popleft()\n        i = state.index(0)\n        r, c = divmod(i, cols)\n        for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < rows and 0 <= nc < cols:\n                j = nr * cols + nc\n                lst = list(state)\n                lst[i], lst[j] = lst[j], lst[i]\n                nxt = tuple(lst)\n                if nxt == goal:\n                    return d + 1\n                if nxt not in seen:\n                    seen.add(nxt)\n                    q.append((nxt, d + 1))\n    return None\n\n\nboards = [[[4, 1, 2], [0, 5, 3], [7, 8, 6]],\n          [[1, 2, 3], [4, 0, 8], [7, 6, 5]],\n          [[1, 2, 3], [4, 5, 0], [7, 8, 6]],\n          [[0, 1, 2], [4, 5, 3]],\n          [[4, 1, 2], [5, 0, 3]]]\n\nfor board in boards:\n    want = optimal_len(board)\n    sols = list(TilePuzzle([row[:] for row in board]).find_solutions_iddfs())\n    assert sols, board\n    assert len({len(s) for s in sols}) == 1, (\"mixed lengths\", board)\n    assert len(sols[0]) == want, (board, len(sols[0]), want)\n    seen = set()\n    for sol in sols:\n        replay = TilePuzzle([row[:] for row in board])\n        for move in sol:\n            assert replay.perform_move(move), (\"illegal move\", board, sol)\n        assert replay.is_solved(), (board, sol)\n        seen.add(tuple(sol))\n    assert len(seen) == len(sols), (\"duplicate solutions\", board)"
+    },
+    {
+     "name": "ALL optimal solutions are present, checked against a layered BFS",
+     "src": "from collections import deque\n\nORDER = [\"up\", \"down\", \"left\", \"right\"]\nOFF = {\"up\": (-1, 0), \"down\": (1, 0), \"left\": (0, -1), \"right\": (0, 1)}\n\n\ndef oracle(board):\n    rows, cols = len(board), len(board[0])\n    start = tuple(v for row in board for v in row)\n    goal = tuple(range(1, rows * cols)) + (0,)\n    if start == goal:\n        return [[]]\n\n    def succ(state):\n        i = state.index(0)\n        r, c = divmod(i, cols)\n        for name in ORDER:\n            dr, dc = OFF[name]\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < rows and 0 <= nc < cols:\n                j = nr * cols + nc\n                lst = list(state)\n                lst[i], lst[j] = lst[j], lst[i]\n                yield name, tuple(lst)\n\n    layer = {start: [[]]}\n    seen = {start}\n    while layer:\n        nxt = {}\n        for state, routes in layer.items():\n            for name, other in succ(state):\n                if other in seen:\n                    continue\n                nxt.setdefault(other, [])\n                for route in routes:\n                    nxt[other].append(route + [name])\n        if goal in nxt:\n            return nxt[goal]\n        seen.update(nxt)\n        layer = nxt\n    return []\n\n\nboards = [[[4, 1, 2], [0, 5, 3], [7, 8, 6]],\n          [[1, 2, 3], [4, 0, 8], [7, 6, 5]],\n          [[1, 0, 2], [4, 5, 3]],\n          [[4, 1, 2], [5, 0, 3]],\n          [[1, 2, 3], [0, 4, 5]]]\n\nfor board in boards:\n    want = sorted(map(tuple, oracle(board)))\n    got = sorted(map(tuple,\n                     TilePuzzle([row[:] for row in board]).find_solutions_iddfs()))\n    assert got == want, (board, len(got), len(want))"
+    }
+   ]
+  }
+ ]
+}
