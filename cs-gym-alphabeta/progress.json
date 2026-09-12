@@ -1,0 +1,14 @@
+{
+ "code": {
+  "nodes-and-leaves": "class Node(object):\n\n    def __init__(self, value=None, children=None):\n        self.value = value\n        self.children = children if children is not None else []\n\n    def is_leaf(self):\n        return len(self.children) == 0\n\n\ndef build(spec):\n    if isinstance(spec, tuple):\n        return Node(spec[0], [build(child) for child in spec[1]])\n    if isinstance(spec, list):\n        return Node(None, [build(child) for child in spec])\n    return Node(spec)\n\n\ndef count_nodes(node):\n    return 1 + sum(count_nodes(child) for child in node.children)\n\n\ndef count_leaves(node):\n    if node.is_leaf():\n        return 1\n    return sum(count_leaves(child) for child in node.children)\n"
+ },
+ "codeAt": {
+  "nodes-and-leaves": 1789252862213
+ },
+ "last": "nodes-and-leaves",
+ "solved": [
+  "nodes-and-leaves"
+ ],
+ "updated": "2026-09-12T22:41:04.696Z",
+ "version": 1
+}
