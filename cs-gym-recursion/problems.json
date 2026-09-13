@@ -1,0 +1,261 @@
+{
+ "tracks": [
+  {
+   "name": "Base Case & Accumulation",
+   "blurb": "The two halves every recursive function needs, and trusting the call to have already solved the smaller problem."
+  },
+  {
+   "name": "Recursion Meets Structure",
+   "blurb": "Nested lists, branching calls, and returning more than one thing at once -- the shapes trees need next."
+  }
+ ],
+ "problems": [
+  {
+   "id": "factorial",
+   "track": "Base Case & Accumulation",
+   "title": "Factorial, the Smallest Possible Recursion",
+   "difficulty": "warmup",
+   "points": 5,
+   "blurb": "One base case, one recursive case, nothing else -- get this reflex automatic first.",
+   "statement": "<p>Write <code>factorial(n)</code> recursively: <code>n!</code> is\n<code>n * (n - 1) * ... * 1</code>, and <code>0!</code> is <code>1</code> by\ndefinition. Assume <code>n &gt;= 0</code>.</p>\n\n<p>Do not use a loop. The point of this problem is entirely the shape:\none line that stops the recursion, one line that trusts\n<code>factorial(n - 1)</code> to already be correct and builds this\ncall's answer on top of it.</p>",
+   "examples": ">>> factorial(0)\n1\n>>> factorial(1)\n1\n>>> factorial(5)\n120",
+   "starter": "def factorial(n):\n    pass",
+   "hints": [
+    "The base case is the smallest input you can answer without recursing at all: n == 0. What is 0! by definition?",
+    "For everything else, assume factorial(n - 1) already returns the correct answer for n - 1 -- don't try to trace through what it does internally. Given that trusted number, how do you build n!  from it?",
+    "return n * factorial(n - 1). Nothing more is needed."
+   ],
+   "solution": "def factorial(n):\n    if n == 0:\n        return 1\n    return n * factorial(n - 1)",
+   "tests": [
+    {
+     "name": "the base case itself",
+     "src": "assert factorial(0) == 1"
+    },
+    {
+     "name": "small values",
+     "src": "assert factorial(1) == 1\nassert factorial(2) == 2\nassert factorial(3) == 6"
+    },
+    {
+     "name": "checked against a direct loop",
+     "src": "for n in range(10):\n    want = 1\n    for k in range(1, n + 1):\n        want *= k\n    assert factorial(n) == want, (n, factorial(n), want)"
+    }
+   ]
+  },
+  {
+   "id": "sum-list",
+   "track": "Base Case & Accumulation",
+   "title": "Summing a List Without a Loop",
+   "difficulty": "easy",
+   "points": 10,
+   "blurb": "The base case is the empty list -- and the recursive call already solved everything after the first element.",
+   "statement": "<p>Write <code>sum_list(values)</code>, the sum of a list of numbers,\nwithout using a loop or the built-in <code>sum</code>.</p>\n\n<p>The recursive step splits the list into its first element and\n\"everything else\": <code>values[0]</code> and <code>values[1:]</code>.\nTrust that <code>sum_list(values[1:])</code> already correctly adds up\neverything after the first element -- don't try to reason about what\nhappens two or three calls deep. Given that trusted number, what do you\nadd to it?</p>",
+   "examples": ">>> sum_list([])\n0\n>>> sum_list([5])\n5\n>>> sum_list([1, 2, 3, 4])\n10\n>>> sum_list([-3, 3])\n0",
+   "starter": "def sum_list(values):\n    pass",
+   "hints": [
+    "The base case is the empty list -- there is nothing to add, so what should an empty list sum to?",
+    "The recursive case: values[0] + sum_list(values[1:]). The slice values[1:] is a brand-new, one-shorter list -- that's what makes the recursion make progress toward the base case.",
+    "If you're tempted to write a loop inside this function, stop -- the recursive call is doing the loop's job. Each call handles exactly one element, then delegates the rest."
+   ],
+   "solution": "def sum_list(values):\n    if not values:\n        return 0\n    return values[0] + sum_list(values[1:])",
+   "tests": [
+    {
+     "name": "the empty list sums to zero",
+     "src": "assert sum_list([]) == 0"
+    },
+    {
+     "name": "small lists",
+     "src": "assert sum_list([5]) == 5\nassert sum_list([1, 2, 3, 4]) == 10\nassert sum_list([-3, 3]) == 0"
+    },
+    {
+     "name": "negative numbers throughout",
+     "src": "assert sum_list([-1, -2, -3]) == -6"
+    },
+    {
+     "name": "random lists, checked against the built-in sum",
+     "src": "import random\nrandom.seed(3)\nfor _ in range(200):\n    values = [random.randint(-50, 50) for _ in range(random.randint(0, 12))]\n    assert sum_list(values) == sum(values), values"
+    }
+   ]
+  },
+  {
+   "id": "max-of-list",
+   "track": "Base Case & Accumulation",
+   "title": "The Biggest Number, One Element at a Time",
+   "difficulty": "easy",
+   "points": 10,
+   "blurb": "Compare the first element against what the rest of the list already decided -- not against a value you invent.",
+   "statement": "<p>Write <code>max_of_list(values)</code>: the largest number in a\n<strong>non-empty</strong> list, recursively, without the built-in\n<code>max</code>.</p>\n\n<p>This is the exact shape a later tree problem needs, so it's worth\ngetting the instinct right here first: the recursive call\n<code>max_of_list(values[1:])</code> already correctly tells you the\nlargest value among everything after the first element. Your only job at\nthis call is to compare <code>values[0]</code> against that trusted\nnumber.</p>\n\n<p>A list of one element has nothing to compare against and nothing left to\nrecurse into -- that's your base case. Watch for negative numbers: a\nstarting guess of <code>0</code> is wrong if every value in the list is\nnegative.</p>",
+   "examples": ">>> max_of_list([7])\n7\n>>> max_of_list([3, 9, 2])\n9\n>>> max_of_list([-5, -1, -9])\n-1",
+   "starter": "def max_of_list(values):\n    pass",
+   "hints": [
+    "Base case: a list with exactly one element. Its max is that element -- there's nothing to recurse into.",
+    "Recursive case: rest_max = max_of_list(values[1:]). That call has already found the biggest value in everything after the first element. Now compare values[0] against rest_max directly -- don't seed a running variable from 0 or from values[0] alone and then loop.",
+    "return values[0] if values[0] > rest_max else rest_max."
+   ],
+   "solution": "def max_of_list(values):\n    if len(values) == 1:\n        return values[0]\n    rest_max = max_of_list(values[1:])\n    return values[0] if values[0] > rest_max else rest_max",
+   "tests": [
+    {
+     "name": "a single element is its own max",
+     "src": "assert max_of_list([7]) == 7"
+    },
+    {
+     "name": "small lists, max in different positions",
+     "src": "assert max_of_list([3, 9, 2]) == 9\nassert max_of_list([9, 3, 2]) == 9\nassert max_of_list([3, 2, 9]) == 9"
+    },
+    {
+     "name": "all negative -- zero is not a safe starting guess",
+     "src": "assert max_of_list([-5, -1, -9]) == -1\nassert max_of_list([-1, -2, -3]) == -1"
+    },
+    {
+     "name": "random lists, checked against the built-in max",
+     "src": "import random\nrandom.seed(4)\nfor _ in range(200):\n    values = [random.randint(-50, 50) for _ in range(random.randint(1, 12))]\n    assert max_of_list(values) == max(values), values"
+    }
+   ]
+  },
+  {
+   "id": "count-in-nested",
+   "track": "Recursion Meets Structure",
+   "title": "Counting a Value Through Nested Lists",
+   "difficulty": "medium",
+   "points": 15,
+   "blurb": "No fixed depth to loop over -- a list inside a list inside a list, however deep, needs recursion to reach the bottom.",
+   "statement": "<p>A list can hold plain numbers and other lists, nested arbitrarily deep:\n<code>[1, [2, 3, [4]], 5]</code>. Write\n<code>count_value(nested, target)</code>: how many times <code>target</code>\nappears anywhere inside, at any depth.</p>\n\n<p>There is no way to know the nesting depth ahead of time, so a fixed\nnumber of loops can't reach the bottom -- recursion is the only way to\nhandle \"arbitrarily deep.\" This is exactly the shape of a tree's\n<code>children</code> list, just without a <code>Node</code> class wrapped\naround it.</p>",
+   "examples": ">>> count_value([1, 2, 3], 2)\n1\n>>> count_value([1, [2, 3, [2]], 2], 2)\n3\n>>> count_value([1, [2, [3, [4, [5]]]]], 5)\n1\n>>> count_value([], 9)\n0",
+   "starter": "def count_value(nested, target):\n    pass",
+   "hints": [
+    "Loop over the elements of nested. For each one, check: is this element itself a list, or a plain number?",
+    "isinstance(item, list) tells you which case you're in. If item is a list, recurse into it: count_value(item, target). If it isn't, just compare it to target directly.",
+    "Keep a running total and add each element's contribution -- either count_value(item, target) for a nested list, or 1 (if it equals target) / 0 (if it doesn't) for a plain number."
+   ],
+   "solution": "def count_value(nested, target):\n    total = 0\n    for item in nested:\n        if isinstance(item, list):\n            total += count_value(item, target)\n        elif item == target:\n            total += 1\n    return total",
+   "tests": [
+    {
+     "name": "a flat list",
+     "src": "assert count_value([1, 2, 3], 2) == 1"
+    },
+    {
+     "name": "the empty list",
+     "src": "assert count_value([], 9) == 0"
+    },
+    {
+     "name": "repeats scattered across depths",
+     "src": "assert count_value([1, [2, 3, [2]], 2], 2) == 3"
+    },
+    {
+     "name": "deep nesting, a single match at the bottom",
+     "src": "assert count_value([1, [2, [3, [4, [5]]]]], 5) == 1\nassert count_value([1, [2, [3, [4, [5]]]]], 1) == 1"
+    },
+    {
+     "name": "random nested lists, checked against a direct flatten",
+     "src": "import random\nrandom.seed(5)\n\ndef make(depth):\n    if depth == 0 or random.random() < 0.4:\n        return random.randint(0, 4)\n    return [make(depth - 1) for _ in range(random.randint(0, 3))]\n\ndef flat(nested):\n    out = []\n    for item in nested:\n        if isinstance(item, list):\n            out += flat(item)\n        else:\n            out.append(item)\n    return out\n\nfor _ in range(100):\n    tree = [make(3) for _ in range(random.randint(0, 4))]\n    for target in range(5):\n        want = flat(tree).count(target)\n        assert count_value(tree, target) == want, (tree, target)"
+    }
+   ]
+  },
+  {
+   "id": "flatten",
+   "track": "Recursion Meets Structure",
+   "title": "Flattening a Nested List, Lazily",
+   "difficulty": "medium",
+   "points": 15,
+   "blurb": "yield from a recursive call -- the exact tool a tree's leaf-walk needs next.",
+   "statement": "<p>Write <code>flatten(nested)</code> as a <strong>generator</strong> that\nyields every non-list element inside <code>nested</code>, at any depth,\nleft to right.</p>\n\n<p>This is deliberately the same shape as walking every leaf of a tree --\njust on plain nested lists instead of <code>Node</code> objects. The trap\nis the same one too: calling <code>flatten(item)</code> on a line by\nitself creates a generator and throws it away without yielding anything.\nYou need <code>yield from</code> to forward what an inner call\nproduces.</p>",
+   "examples": ">>> list(flatten([1, [2, 3], 4]))\n[1, 2, 3, 4]\n>>> list(flatten([1, [2, [3, [4]]]]))\n[1, 2, 3, 4]\n>>> list(flatten([]))\n[]",
+   "starter": "def flatten(nested):\n    pass",
+   "hints": [
+    "Use yield, never build and return a list. Loop over nested: for each item, check isinstance(item, list).",
+    "If item is a plain value, yield item directly. If item is a list, you need everything it eventually yields, at whatever depth -- that's yield from flatten(item).",
+    "Writing flatten(item) alone (no yield, no yield from) on its own line does nothing observable -- it builds a generator object and immediately discards it without running any of its code."
+   ],
+   "solution": "def flatten(nested):\n    for item in nested:\n        if isinstance(item, list):\n            yield from flatten(item)\n        else:\n            yield item",
+   "tests": [
+    {
+     "name": "calling it returns a generator",
+     "src": "import inspect\nresult = flatten([1, 2])\nassert inspect.isgenerator(result), (\n    \"flatten returned %s -- use yield, not return\" % type(result).__name__)"
+    },
+    {
+     "name": "flat and nested lists, left to right",
+     "src": "assert list(flatten([1, [2, 3], 4])) == [1, 2, 3, 4]\nassert list(flatten([1, [2, [3, [4]]]])) == [1, 2, 3, 4]\nassert list(flatten([])) == []"
+    },
+    {
+     "name": "the first value arrives without walking the rest",
+     "src": "class Poisoned(list):\n    def __iter__(self):\n        raise AssertionError(\n            \"the rest of the list was walked before the first value was \"\n            \"requested -- yield as you go, using yield from on nested \"\n            \"lists\")\n\nlate = [2, 3]\ntail = Poisoned([late])\ngen = flatten([1] + tail)\nassert next(gen) == 1"
+    },
+    {
+     "name": "random nested lists, checked against a direct flatten",
+     "src": "import random\nrandom.seed(6)\n\ndef make(depth):\n    if depth == 0 or random.random() < 0.4:\n        return random.randint(0, 20)\n    return [make(depth - 1) for _ in range(random.randint(0, 3))]\n\ndef ref(nested):\n    out = []\n    for item in nested:\n        if isinstance(item, list):\n            out += ref(item)\n        else:\n            out.append(item)\n    return out\n\nfor _ in range(100):\n    tree = [make(3) for _ in range(random.randint(0, 4))]\n    assert list(flatten(tree)) == ref(tree), tree"
+    }
+   ]
+  },
+  {
+   "id": "index-of-max",
+   "track": "Recursion Meets Structure",
+   "title": "Where the Biggest Number Is, Not Just What It Is",
+   "difficulty": "medium",
+   "points": 20,
+   "blurb": "A recursive call that has to hand back two things at once, because one of them alone can't answer the question.",
+   "statement": "<p>Write <code>index_of_max(values)</code>: the index of the largest value\nin a <strong>non-empty</strong> list. If several elements tie for largest,\nreturn the index of the <strong>first</strong> one.</p>\n\n<p>This is the same problem as <code>max_of_list</code>, with one twist\nthat changes everything about the recursion: you now need to report\n<em>where</em> the max is, not just what it is. A recursive call on\n<code>values[1:]</code> that only returns an index isn't enough on its\nown &mdash; you can't tell whether <code>values[0]</code> beats it without\nalso knowing <em>what value</em> that index points to. And a call that\nonly returns the value isn't enough either &mdash; you'd have the number\nbut no position.</p>\n\n<p>The fix is to have the recursive call return <strong>both</strong> the\nbest value and its index together, as a pair, so every level of the\nrecursion has everything it needs to make its own comparison. Only the\noutermost call needs to throw away the value and keep just the\nindex &mdash; which is exactly why a small helper that returns the pair,\ncalled once from inside <code>index_of_max</code>, is the natural\nshape here.</p>",
+   "examples": ">>> index_of_max([7])\n0\n>>> index_of_max([3, 9, 2])\n1\n>>> index_of_max([9, 3, 2])\n0\n>>> index_of_max([1, 5, 5, 2])\n1",
+   "starter": "def index_of_max(values):\n    pass",
+   "hints": [
+    "Write a helper, best(values), that returns (value, index) for the best element -- the index is relative to whatever list was passed to that call, not the original list.",
+    "Base case of the helper: one element left. Its pair is (values[0], 0).",
+    "Recursive case: rest_value, rest_index = best(values[1:]). If values[0] is at least as big as rest_value, this call's answer is (values[0], 0). Otherwise it's (rest_value, rest_index + 1) -- the +1 shifts the index because rest_index was counted from the start of the shorter, sliced list, one position to the right of where values[0] sits.",
+    "Use >=, not >, in that comparison. values[0] is always to the left of everything best(values[1:]) considered, so on an exact tie it must win -- using a strict > lets the rest of the list keep a later duplicate instead of yielding to the earlier one.",
+    "index_of_max itself is one line: call best(values) and return only the index half of the pair."
+   ],
+   "solution": "def index_of_max(values):\n\n    def best(values):\n        if len(values) == 1:\n            return values[0], 0\n        rest_value, rest_index = best(values[1:])\n        if values[0] >= rest_value:\n            return values[0], 0\n        return rest_value, rest_index + 1\n\n    return best(values)[1]",
+   "tests": [
+    {
+     "name": "a single element is at index 0",
+     "src": "assert index_of_max([7]) == 0"
+    },
+    {
+     "name": "the max in different positions",
+     "src": "assert index_of_max([3, 9, 2]) == 1\nassert index_of_max([9, 3, 2]) == 0\nassert index_of_max([3, 2, 9]) == 2"
+    },
+    {
+     "name": "ties resolve to the first occurrence",
+     "src": "got = index_of_max([1, 5, 5, 2])\nassert got == 1, (\"got %d -- a later tie replaced the earlier one, use a \"\n                  \"strict > comparison\" % got)\ngot = index_of_max([5, 1, 5])\nassert got == 0, got"
+    },
+    {
+     "name": "all negative values",
+     "src": "assert index_of_max([-5, -1, -9]) == 1"
+    },
+    {
+     "name": "random lists, checked against a direct scan",
+     "src": "import random\nrandom.seed(7)\nfor _ in range(300):\n    values = [random.randint(-30, 30) for _ in range(random.randint(1, 12))]\n    want = 0\n    for i in range(1, len(values)):\n        if values[i] > values[want]:\n            want = i\n    got = index_of_max(values)\n    assert got == want, (values, got, want)"
+    }
+   ]
+  },
+  {
+   "id": "fibonacci",
+   "track": "Recursion Meets Structure",
+   "title": "Two Recursive Calls, Combined",
+   "difficulty": "medium",
+   "points": 15,
+   "blurb": "Branching recursion: each call spawns two more, the same way a tree node's children each spawn their own subtrees.",
+   "statement": "<p>Write <code>fibonacci(n)</code>: the <code>n</code>th Fibonacci number,\nwhere <code>fibonacci(0) = 0</code>, <code>fibonacci(1) = 1</code>, and\nevery later term is the sum of the two before it. Assume\n<code>n &gt;= 0</code>.</p>\n\n<p>Every problem so far had one recursive call per branch. This one has\n<strong>two</strong> &mdash; <code>fibonacci(n - 1)</code> and\n<code>fibonacci(n - 2)</code> &mdash; combined into one answer, the same\nway a tree node with several children combines each child's separately\ncomputed result. Getting comfortable with \"make more than one recursive\ncall, then combine what comes back\" is the last piece before moving on to\ntrees, where a node can have any number of children, not just two.</p>\n\n<p>This one also has <strong>two</strong> base cases, not one &mdash; both\n<code>fibonacci(0)</code> and <code>fibonacci(1)</code> are answered\ndirectly, without recursing.</p>",
+   "examples": ">>> fibonacci(0)\n0\n>>> fibonacci(1)\n1\n>>> fibonacci(2)\n1\n>>> fibonacci(6)\n8",
+   "starter": "def fibonacci(n):\n    pass",
+   "hints": [
+    "Two base cases: n == 0 returns 0, n == 1 returns 1. Handle both before anything recursive.",
+    "For n >= 2: fibonacci(n - 1) + fibonacci(n - 2). Each of those calls is trusted to already be correct on its own -- you don't need to trace through either one by hand.",
+    "This is slow for large n because the same smaller value gets recomputed many times across the branches -- that's fine for this problem, and it's exactly the same cost tradeoff an unpruned game tree has."
+   ],
+   "solution": "def fibonacci(n):\n    if n == 0:\n        return 0\n    if n == 1:\n        return 1\n    return fibonacci(n - 1) + fibonacci(n - 2)",
+   "tests": [
+    {
+     "name": "both base cases",
+     "src": "assert fibonacci(0) == 0\nassert fibonacci(1) == 1"
+    },
+    {
+     "name": "the first several terms",
+     "src": "assert fibonacci(2) == 1\nassert fibonacci(3) == 2\nassert fibonacci(4) == 3\nassert fibonacci(5) == 5\nassert fibonacci(6) == 8"
+    },
+    {
+     "name": "checked against a direct iterative computation",
+     "src": "def ref(n):\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a\n\nfor n in range(15):\n    assert fibonacci(n) == ref(n), (n, fibonacci(n), ref(n))"
+    }
+   ]
+  }
+ ]
+}
