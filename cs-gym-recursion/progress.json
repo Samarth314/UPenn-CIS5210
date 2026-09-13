@@ -1,8 +1,32 @@
 {
- "code": {},
- "codeAt": {},
- "last": null,
- "solved": [],
- "updated": null,
+ "code": {
+  "count-in-nested": "def count_value(nested, target):\n    \n    if not nested:\n        return 0\n        \n    def count_value_helper(nested, target, count):\n        if not nested:\n            return count\n            \n        for nest in nested:\n            \n            if nest == target:\n                count += 1\n            if isinstance(nest, list):\n                count = count_value_helper(nest, target, count)\n        return count\n    \n    return count_value_helper(nested, target, 0)\n",
+  "factorial": "def factorial(n):\n    if n == 0:\n        return 1\n        \n    return n * factorial(n-1)\n",
+  "fibonacci": "def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-2) + fibonacci(n-1)\n",
+  "flatten": "def flatten(nested):\n    \n        \n            \n    for nest in nested:\n        if not isinstance(nest, list):\n            yield nest\n        else:\n            yield from flatten(nest)\n",
+  "index-of-max": "def index_of_max(values):\n    \n    def index_of_max_helper(index, max_val, best_index):\n        if index == len(values):\n            return best_index\n        \n        if values[index] > max_val:\n            max_val = values[index]\n            best_index = index\n        \n        return index_of_max_helper(index+1, max_val, best_index)\n    return index_of_max_helper(0, float('-inf'), 0)\n",
+  "max-of-list": "def max_of_list(values):\n    \n    max_val = float('-inf')\n    \n    def max_of_list_helper(index, max_val):\n        if index == len(values):\n            return max_val\n        \n        if values[index] > max_val:\n            max_val = values[index]\n        return max_of_list_helper(index+1, max_val)\n    return max_of_list_helper(0, -10000)\n\n",
+  "sum-list": "def sum_list(values):\n    \n    \n    def sum_list_helper(index):\n        if index == len(values):\n            return 0\n            \n        return values[index] + sum_list_helper(index+1)\n        \n    return sum_list_helper(0)\n"
+ },
+ "codeAt": {
+  "count-in-nested": 1789267794172,
+  "factorial": 1789265480858,
+  "fibonacci": 1789271492891,
+  "flatten": 1789268894562,
+  "index-of-max": 1789271259336,
+  "max-of-list": 1789266432620,
+  "sum-list": 1789265999596
+ },
+ "last": "fibonacci",
+ "solved": [
+  "count-in-nested",
+  "factorial",
+  "fibonacci",
+  "flatten",
+  "index-of-max",
+  "max-of-list",
+  "sum-list"
+ ],
+ "updated": "2026-09-13T03:54:45.790Z",
  "version": 1
 }
