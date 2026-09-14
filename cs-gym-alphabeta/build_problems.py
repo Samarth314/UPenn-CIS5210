@@ -2158,6 +2158,405 @@ TRACKS = [
 ]
 
 
+def free_legal_moves(board):
+    rows, cols = len(board), len(board[0])
+    moves = []
+    for r in range(rows):
+        for c in range(cols):
+            if r + 1 < rows and not board[r][c] and not board[r + 1][c]:
+                moves.append((r, c, True))
+            if c + 1 < cols and not board[r][c] and not board[r][c + 1]:
+                moves.append((r, c, False))
+    return moves
+
+
+def free_after(board, move):
+    r, c, vertical = move
+    new = [row[:] for row in board]
+    new[r][c] = True
+    if vertical:
+        new[r + 1][c] = True
+    else:
+        new[r][c + 1] = True
+    return new
+
+
+def free_best(board, limit, bug=None):
+    def children(state, maxing):
+        return [(m, free_after(state, m)) for m in free_legal_moves(state)]
+
+    def evaluate(state, maxing):
+        if bug == "flat_formula":
+            return 0
+        if not free_legal_moves(state):
+            if bug == "always_neg":
+                return -1
+            return -1 if maxing else 1
+        return 0
+
+    search_bug = None if bug in ("flat_formula", "always_neg") else bug
+    return game_search(board, children, evaluate, limit, search_bug)
+
+
+F2, X2 = False, True
+FREE_MISTAKES = ("flat_formula", "always_neg", "no_window", "strict_cut",
+                 "ties_last")
+FREE_BOARDS = [
+    [[F2] * 2 for _ in range(2)],
+    [[F2] * 3 for _ in range(2)],
+    [[F2] * 3 for _ in range(3)],
+    [[X2, F2], [F2, F2], [F2, X2]],
+    [[F2, F2, X2], [F2, X2, F2]],
+    [[F2]],
+]
+FREE_SEARCH_BOARDS = [
+    [[F2] * 2 for _ in range(2)],
+    [[F2] * 3 for _ in range(2)],
+    [[F2] * 3 for _ in range(3)],
+    [[X2, F2, F2], [F2, F2, F2], [F2, F2, X2]],
+    [[F2, F2, F2, F2], [F2, X2, F2, F2]],
+]
+
+
+def free_case(board, limit):
+    want = free_best(board, limit)
+    mistakes = [(bug, free_best(board, limit, bug)) for bug in FREE_MISTAKES]
+    mistakes += [("deeper", free_best(board, limit + 1))]
+    if limit > 1:
+        mistakes += [("shallower", free_best(board, limit - 1))]
+    return (board, limit, want, [(n, o) for n, o in mistakes if o != want])
+
+
+FREE_CASES = [free_case(b, k) for b in FREE_SEARCH_BOARDS for k in (1, 2, 3)]
+FREE_MISTAKE_CASE = next(c for c in FREE_CASES
+                        if dict(c[3]).get("flat_formula") is not None)
+
+FREE_SOLUTION = '''
+def create_free_dominoes_game(rows, cols):
+    return FreeDominoesGame([[False] * cols for _ in range(rows)])
+
+
+class FreeDominoesGame(object):
+
+    def __init__(self, board):
+        self.board = board
+        self.rows = len(board)
+        self.cols = len(board[0])
+
+    def get_board(self):
+        return self.board
+
+    def is_legal_move(self, row, col, vertical):
+        if vertical:
+            if not (0 <= row < self.rows - 1 and 0 <= col < self.cols):
+                return False
+            return not self.board[row][col] and not self.board[row + 1][col]
+        if not (0 <= row < self.rows and 0 <= col < self.cols - 1):
+            return False
+        return not self.board[row][col] and not self.board[row][col + 1]
+
+    def legal_moves(self):
+        for row in range(self.rows):
+            for col in range(self.cols):
+                if self.is_legal_move(row, col, True):
+                    yield (row, col, True)
+                if self.is_legal_move(row, col, False):
+                    yield (row, col, False)
+
+    def perform_move(self, row, col, vertical):
+        self.board[row][col] = True
+        if vertical:
+            self.board[row + 1][col] = True
+        else:
+            self.board[row][col + 1] = True
+
+    def game_over(self):
+        return next(self.legal_moves(), None) is None
+
+    def copy(self):
+        return FreeDominoesGame([row[:] for row in self.board])
+
+    def successors(self):
+        for row, col, vertical in self.legal_moves():
+            child = self.copy()
+            child.perform_move(row, col, vertical)
+            yield (row, col, vertical), child
+
+    def get_best_move(self, limit):
+
+        def max_value(game, alpha, beta, depth):
+            if game.game_over():
+                return -1, None, 1
+            if depth == 0:
+                return 0, None, 1
+            value, move, leaves = float('-inf'), None, 0
+            for mod_move, mod_game in game.successors():
+                v2, _, l2 = min_value(mod_game, alpha, beta, depth - 1)
+                leaves += l2
+                if v2 > value:
+                    value, move = v2, mod_move
+                alpha = max(alpha, value)
+                if value >= beta:
+                    return value, move, leaves
+            return value, move, leaves
+
+        def min_value(game, alpha, beta, depth):
+            if game.game_over():
+                return 1, None, 1
+            if depth == 0:
+                return 0, None, 1
+            value, move, leaves = float('inf'), None, 0
+            for mod_move, mod_game in game.successors():
+                v2, _, l2 = max_value(mod_game, alpha, beta, depth - 1)
+                leaves += l2
+                if v2 < value:
+                    value, move = v2, mod_move
+                beta = min(beta, value)
+                if value <= alpha:
+                    return value, move, leaves
+            return value, move, leaves
+
+        value, move, leaves = max_value(self, float('-inf'), float('inf'),
+                                        limit)
+        return move, value, leaves
+'''
+
+problem(
+    id="free-dominoes-game",
+    track="Homework-Style Games",
+    title="Dominoes Where Nobody Owns an Orientation",
+    difficulty="hard",
+    points=30,
+    blurb="Same board, same 1x2 piece -- but with no vertical/horizontal roles, the homework's evaluation goes to zero and get_best_move needs take-away's win/loss trick instead.",
+    statement="""
+<p>Same board representation as the homework, same <code>1&times;2</code>
+piece, same rule that the last player able to move wins. The one rule that
+changes turns out to change everything else: there is no vertical player
+or horizontal player. <strong>Whoever's turn it is may place a domino
+either way</strong>, freely, every turn.</p>
+
+<p>Write the class from scratch:</p>
+
+<ul>
+  <li><code>__init__</code>, <code>get_board</code>, and
+      <code>create_free_dominoes_game(rows, cols)</code>.</li>
+  <li><code>is_legal_move(row, col, vertical)</code> &mdash; identical
+      bounds-and-empty check to the homework's, for whichever orientation
+      is asked about.</li>
+  <li><code>legal_moves()</code> &mdash; <strong>no <code>vertical</code>
+      parameter this time.</strong> A generator of every legal
+      <code>(row, col, vertical)</code> triple, in row-major order over
+      <code>(row, col)</code>, trying vertical before horizontal at each
+      cell.</li>
+  <li><code>perform_move(row, col, vertical)</code> &mdash; fills the
+      board in place, returns <code>None</code>.</li>
+  <li><code>game_over()</code> &mdash; also no parameter: there is only
+      one set of legal moves on a given board, not one per player, so
+      there is only one way to ask whether the game is over.</li>
+  <li><code>copy()</code> and <code>successors()</code> &mdash; the
+      latter yields <code>((row, col, vertical), new_game)</code> in the
+      same order as <code>legal_moves()</code>.</li>
+  <li><code>get_best_move(limit)</code> &mdash; also no
+      <code>vertical</code> parameter, returning
+      <code>(move, value, leaves)</code>.</li>
+</ul>
+
+<p>That last one is the actual problem. The homework's evaluation was
+<code>len(my legal moves) - len(opponent's legal moves)</code>. Here,
+"my legal moves" and "the opponent's legal moves" are the exact same set
+&mdash; <code>legal_moves()</code> doesn't know or care who's asking
+&mdash; so that formula is <code>len(x) - len(x)</code>, always
+<code>0</code>, on every board, useless as a heuristic.</p>
+
+<p>What still works is <code>TakeAwayGame</code>'s trick: a player who
+faces <code>game_over()</code> on their own turn has already lost. Score
+a MAX node with no legal moves as <code>-1</code>, a MIN node with no
+legal moves as <code>+1</code>, and a node cut off by the depth limit
+(with moves still available) as <code>0</code> &mdash; exactly the
+three-way split <code>TakeAwayGame.get_best_move</code> used, now
+evaluated against a real board instead of a pile of stones.</p>
+""",
+    examples="""
+>>> g = create_free_dominoes_game(2, 2)
+>>> list(g.legal_moves())
+[(0, 0, True), (0, 0, False), (0, 1, True), (1, 0, False)]
+>>> g.perform_move(0, 0, True)
+>>> g.get_board()
+[[True, False], [True, False]]
+>>> g.game_over()
+False
+>>> create_free_dominoes_game(1, 1).game_over()
+True
+>>> create_free_dominoes_game(2, 2).get_best_move(1)
+((0, 0, True), 0, 4)
+>>> create_free_dominoes_game(2, 2).get_best_move(2)
+((0, 0, True), -1, 4)
+""",
+    starter="""
+def create_free_dominoes_game(rows, cols):
+    pass
+
+
+class FreeDominoesGame(object):
+
+    def __init__(self, board):
+        pass
+
+    def get_board(self):
+        pass
+
+    def is_legal_move(self, row, col, vertical):
+        pass
+
+    def legal_moves(self):
+        pass
+
+    def perform_move(self, row, col, vertical):
+        pass
+
+    def game_over(self):
+        pass
+
+    def copy(self):
+        pass
+
+    def successors(self):
+        pass
+
+    def get_best_move(self, limit):
+        pass
+""",
+    hints=[
+        "Start from your homework's is_legal_move -- the bounds-and-empty "
+        "check for one orientation doesn't change at all. legal_moves is "
+        "the same double loop as before, just calling is_legal_move for "
+        "both True and False at every cell instead of only one.",
+        "game_over() is next(self.legal_moves(), None) is None -- same "
+        "shape as the homework, just with no argument to pass through, "
+        "since there's only one legal_moves() now.",
+        "get_best_move is TakeAwayGame's max_value/min_value almost "
+        "unchanged: the stopping condition is game.game_over() (not a "
+        "pile of stones being empty), the terminal values are still -1 "
+        "for MAX and +1 for MIN, and depth == 0 with the game still going "
+        "is still 0. The board-specific work is entirely inside "
+        "successors() -- get_best_move itself barely changes from "
+        "TakeAwayGame's at all.",
+        "If your version scores using a move-count difference like the "
+        "homework's, expect every value to come out 0 or very close to "
+        "it -- that formula can't tell any two non-terminal boards apart "
+        "here, since both sides always see identical legal_moves().",
+    ],
+    solution=FREE_SOLUTION,
+    tests=[
+        T("stores the board and creates empty boards of any shape", """
+board = [[False, True], [False, False]]
+assert FreeDominoesGame(board).get_board() is board
+assert create_free_dominoes_game(2, 3).get_board() == [[False] * 3] * 2
+"""),
+        T("is_legal_move matches both orientations, in and out of bounds", """
+CASES = @@CASES@@
+for board, expected in CASES:
+    game = FreeDominoesGame([row[:] for row in board])
+    for row, col, vertical, want in expected:
+        got = game.is_legal_move(row, col, vertical)
+        assert got == want, (
+            "board %r: is_legal_move(%d, %d, %s) gave %r"
+            % (board, row, col, vertical, got))
+""", CASES=[(b, [(r, c, v,
+                  (r, c, v) in free_legal_moves(b))
+                 for r in range(-1, len(b) + 2)
+                 for c in range(-1, len(b[0]) + 2) for v in (True, False)])
+            for b in FREE_BOARDS]),
+        T("legal_moves is a generator: row-major, vertical before horizontal", """
+import inspect
+result = FreeDominoesGame([[False] * 2] * 2).legal_moves()
+assert inspect.isgenerator(result), "legal_moves should use yield"
+CASES = @@CASES@@
+for board, want in CASES:
+    got = list(FreeDominoesGame([row[:] for row in board]).legal_moves())
+    assert got == want, (board, got, want)
+""", CASES=[(b, free_legal_moves(b)) for b in FREE_BOARDS]),
+        T("perform_move fills two squares in place and returns None", """
+board = [[False] * 4 for _ in range(3)]
+game = FreeDominoesGame(board)
+assert game.perform_move(0, 1, True) is None
+assert game.perform_move(2, 2, False) is None
+assert game.get_board() is board
+assert board == @@WANT@@, board
+""", WANT=free_after(free_after([[F2] * 4 for _ in range(3)], (0, 1, True)),
+                    (2, 2, False))),
+        T("game_over means no orientation fits anywhere, not a full board", """
+assert FreeDominoesGame([[False] * 3] * 3).game_over() is False
+assert FreeDominoesGame([[False]]).game_over() is True, (
+    "a 1x1 board can never fit a 1x2 piece, regardless of fill")
+assert FreeDominoesGame([[True]]).game_over() is True
+jammed = FreeDominoesGame([[False, True], [True, False]])
+assert jammed.game_over() is True, (
+    "two squares are empty but a 1x2 piece fits nowhere on a checkerboard")
+"""),
+        T("copy is deep and independent", """
+original = FreeDominoesGame([[False] * 3 for _ in range(3)])
+twin = original.copy()
+assert isinstance(twin, FreeDominoesGame)
+assert twin.get_board() == original.get_board()
+assert twin.get_board() is not original.get_board()
+assert all(a is not b for a, b in zip(twin.get_board(), original.get_board()))
+twin.perform_move(0, 0, True)
+assert original.get_board() == [[False] * 3 for _ in range(3)]
+"""),
+        T("successors match legal_moves' order and never touch the original", """
+import inspect
+CASES = @@CASES@@
+for board, want in CASES:
+    game = FreeDominoesGame([row[:] for row in board])
+    result = game.successors()
+    assert inspect.isgenerator(result), "successors should use yield"
+    pairs = list(result)
+    assert [m for m, _ in pairs] == [m for m, _ in want], (
+        board, [m for m, _ in pairs])
+    for (move, child), (_, child_board) in zip(pairs, want):
+        assert child.get_board() == child_board, (board, move)
+    assert game.get_board() == board, "successors changed the original board"
+""", CASES=[(b, [(m, free_after(b, m)) for m in free_legal_moves(b)])
+            for b in FREE_BOARDS[:4]]),
+        T("get_best_move: the homework's move-count formula flattens to zero here", """
+board, limit, want, mistakes = @@CASE@@
+got = FreeDominoesGame([row[:] for row in board]).get_best_move(limit)
+if got != want and got == dict(mistakes).get("flat_formula"):
+    raise AssertionError(
+        "%r: this looks like the homework's my-moves-minus-opponent's-moves "
+        "formula -- both players share the same legal_moves() here, so "
+        "that difference is always 0. Use TakeAwayGame's win/loss-at-the-"
+        "horizon scoring instead." % (got,))
+assert got == want, (got, want)
+""", CASE=FREE_MISTAKE_CASE),
+        T("get_best_move across boards and limits", """
+CASES = @@CASES@@
+MESSAGES = {
+    "flat_formula": "scored with a my-moves-minus-opponent's-moves "
+                    "formula, which is always 0 here",
+    "always_neg": "an empty legal_moves() is scored -1 whoever is to move",
+    "no_window": "nothing was pruned -- update alpha/beta after each child",
+    "strict_cut": "cut-offs use < and > instead of <= and >=",
+    "ties_last": "ties went to a later move -- replace the move only on >",
+    "deeper": "searched one move deeper than the limit",
+    "shallower": "searched one move shallower than the limit",
+}
+for board, limit, want, mistakes in CASES:
+    game = FreeDominoesGame([row[:] for row in board])
+    got = game.get_best_move(limit)
+    assert game.get_board() == board, "get_best_move changed the board"
+    if got != want:
+        for name, output in mistakes:
+            if got == output:
+                raise AssertionError("limit %d on %r: got %r, %s"
+                                     % (limit, board, got, MESSAGES[name]))
+    assert got == want, (board, limit, got, want)
+""", CASES=FREE_CASES),
+    ],
+)
+
+
 def run_tests(source, tests):
     """Run one problem's tests against `source`.  Returns a list of failures."""
     namespace = {"__name__": "__solution__"}
