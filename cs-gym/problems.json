@@ -15,6 +15,10 @@
   {
    "name": "Classic Searches",
    "blurb": "The textbook problems, stated so that BFS solves them directly."
+  },
+  {
+   "name": "Depth-Limited Search",
+   "blurb": "Search to a fixed depth, then go deeper: iterative deepening."
   }
  ],
  "problems": [
@@ -606,46 +610,46 @@
    ]
   },
   {
-   "id": "river-crossing",
-   "track": "Classic Searches",
-   "title": "Missionaries and Cannibals",
-   "difficulty": "hard",
-   "points": 25,
-   "blurb": "A tiny state space with a constraint that has to hold on both banks at once.",
-   "statement": "<p><code>missionaries</code> missionaries and <code>cannibals</code> cannibals\nstand on the left bank with one boat that seats <code>capacity</code> people.\nEveryone must end up on the right bank.</p>\n\n<p>Rules:</p>\n<ul>\n  <li>The boat carries between 1 and <code>capacity</code> people per crossing\n      and cannot cross empty.</li>\n  <li>On <strong>either</strong> bank, if any missionaries are present they must\n      not be outnumbered by cannibals. A bank with zero missionaries is always\n      fine.</li>\n  <li>The rule is checked after each crossing lands, counting the people who\n      just stepped off the boat as being on that bank. It is also checked on\n      the bank the boat just left.</li>\n  <li>The boat itself must be safe while crossing: it may not carry more\n      cannibals than missionaries unless it carries no missionaries at all.</li>\n</ul>\n\n<p>Write <code>solve_river_crossing(missionaries, cannibals, capacity)</code>,\nreturning a shortest list of crossings, each a\n<code>(missionaries_moved, cannibals_moved)</code> tuple, or <code>None</code>\nif there is no safe schedule. Crossings alternate direction, starting left to\nright, so the direction is implied by the index and does not appear in the\nmove.</p>\n\n<p>The classic 3-3-2 instance takes 11 crossings; 4-4-2 is famously impossible\nno matter how you shuffle. Both answers fall out of the same search, which is\nthe whole point of encoding constraints into the successor function rather than\ninto clever case analysis.</p>",
-   "examples": ">>> solve_river_crossing(0, 0, 2)\n[]\n>>> solve_river_crossing(1, 1, 2)\n[(1, 1)]\n>>> len(solve_river_crossing(3, 3, 2))\n11\n>>> len(solve_river_crossing(3, 3, 3))\n5\n>>> solve_river_crossing(4, 4, 2) is None\nTrue",
-   "starter": "def solve_river_crossing(missionaries, cannibals, capacity):\n    pass",
+   "id": "iterative-deepening",
+   "track": "Depth-Limited Search",
+   "title": "Deepening the Chain",
+   "difficulty": "medium",
+   "points": 20,
+   "blurb": "Search to a fixed depth, fail, then raise the depth and start over.",
+   "statement": "<p>Start from an integer and reach a target using three moves:\n<code>\"double\"</code> multiplies by 2, <code>\"inc\"</code> adds 1, and\n<code>\"dec\"</code> subtracts 1. The goal is the <strong>fewest moves</strong>\nthat get you there.</p>\n\n<p>Breadth-first search would solve this, at the cost of holding an entire\nfrontier in memory. Iterative deepening gets the same shortest answer with the\nmemory of a depth-first search, by running a sequence of searches that each\nrefuse to look past a fixed depth.</p>\n\n<ul>\n  <li><code>depth_limited_search(start, target, limit)</code> &mdash; a\n      depth-first search that stops descending once it is <code>limit</code>\n      moves deep. Return a list of moves of length <strong>at most</strong>\n      <code>limit</code> that reaches the target, or <code>None</code> if no\n      such sequence exists within that depth. It does not have to be the\n      shortest one &mdash; any sequence inside the limit will do.</li>\n  <li><code>iterative_deepening_search(start, target)</code> &mdash; call the\n      above with <code>limit</code> 0, then 1, then 2, and so on, returning\n      the first solution found.</li>\n</ul>\n\n<p>That wrapper is what makes the answer optimal: if nothing is found at depth\n<code>k</code> then no solution of length <code>k</code> exists, so the first\none you do find is a shortest one. The apparent waste &mdash; re-expanding the\nshallow nodes on every pass &mdash; costs less than it looks, because the\nnumber of nodes at depth <code>k</code> dwarfs every level above it.</p>\n\n<p>Note you never need a termination guard: <code>\"inc\"</code> and\n<code>\"dec\"</code> alone can walk to any integer, so every target is\nreachable. Do not keep a visited set &mdash; the point of this search is that\nit holds only the current path.</p>",
+   "examples": ">>> depth_limited_search(1, 1, 0)\n[]\n>>> depth_limited_search(1, 3, 1) is None\nTrue\n>>> len(depth_limited_search(1, 3, 2))\n2\n>>> iterative_deepening_search(1, 11)\n['double', 'double', 'inc', 'double', 'inc']\n>>> len(iterative_deepening_search(0, 7))\n5\n>>> iterative_deepening_search(6, 6)\n[]",
+   "starter": "def depth_limited_search(start, target, limit):\n    pass\n\n\ndef iterative_deepening_search(start, target):\n    pass",
    "hints": [
-    "Three numbers describe the world completely: missionaries on the left, cannibals on the left, and which side the boat is on. Everything else is implied by subtraction.",
-    "Enumerate boat loads as pairs (dm, dc) with dm + dc between 1 and capacity, then filter: enough people on the departing bank, a safe boat, and a safe state on both banks afterwards.",
-    "A bank is safe when it has no missionaries, or at least as many missionaries as cannibals. Write that as one helper and call it for both banks.",
-    "Do not forget the boat load itself must be safe -- (1, 2) is never a legal load even when both banks would survive it."
+    "depth_limited_search is naturally recursive. Two base cases: you are standing on the target (return []), or the limit has run out (return None).",
+    "The recursive step tries each move, recurses with limit - 1, and on success returns [move] + whatever came back.",
+    "Returning None and returning [] mean different things -- [] is a successful empty solution. Test with `is not None`, never truthiness, or a zero-move answer reads as failure.",
+    "iterative_deepening_search is a loop, not a recursion: raise the limit by one each time until depth_limited_search stops returning None."
    ],
-   "solution": "from collections import deque\n\n\ndef _safe(m, c, total_m, total_c):\n    if m < 0 or c < 0 or m > total_m or c > total_c:\n        return False\n    if m and m < c:\n        return False\n    right_m, right_c = total_m - m, total_c - c\n    if right_m and right_m < right_c:\n        return False\n    return True\n\n\ndef solve_river_crossing(missionaries, cannibals, capacity):\n    total_m, total_c = missionaries, cannibals\n    start = (total_m, total_c, 0)\n    goal = (0, 0, 1)\n    if start[:2] == (0, 0):\n        return []\n    if not _safe(total_m, total_c, total_m, total_c):\n        return None\n    visited = {start}\n    frontier = deque([(start, [])])\n    while frontier:\n        (m, c, boat), moves = frontier.popleft()\n        sign = -1 if boat == 0 else 1\n        for dm in range(capacity + 1):\n            for dc in range(capacity + 1 - dm):\n                if dm + dc == 0:\n                    continue\n                if dm and dm < dc:\n                    continue\n                if boat == 0 and (dm > m or dc > c):\n                    continue\n                if boat == 1 and (dm > total_m - m or dc > total_c - c):\n                    continue\n                nxt = (m + sign * dm, c + sign * dc, 1 - boat)\n                if not _safe(nxt[0], nxt[1], total_m, total_c):\n                    continue\n                if nxt in visited:\n                    continue\n                if nxt == goal:\n                    return moves + [(dm, dc)]\n                visited.add(nxt)\n                frontier.append((nxt, moves + [(dm, dc)]))\n    return None",
+   "solution": "MOVES = (\"double\", \"inc\", \"dec\")\n\n\ndef _apply(value, move):\n    if move == \"double\":\n        return value * 2\n    if move == \"inc\":\n        return value + 1\n    return value - 1\n\n\ndef depth_limited_search(start, target, limit):\n    if start == target:\n        return []\n    if limit <= 0:\n        return None\n    for move in MOVES:\n        rest = depth_limited_search(_apply(start, move), target, limit - 1)\n        if rest is not None:\n            return [move] + rest\n    return None\n\n\ndef iterative_deepening_search(start, target):\n    limit = 0\n    while True:\n        found = depth_limited_search(start, target, limit)\n        if found is not None:\n            return found\n        limit += 1",
    "tests": [
     {
-     "name": "nobody to move",
-     "src": "assert solve_river_crossing(0, 0, 2) == []\nassert solve_river_crossing(0, 0, 1) == []"
+     "name": "a limit of zero only succeeds when you are already there",
+     "src": "assert depth_limited_search(5, 5, 0) == []\nassert depth_limited_search(0, 0, 0) == []\nassert depth_limited_search(1, 2, 0) is None\nassert depth_limited_search(-3, 4, 0) is None"
     },
     {
-     "name": "one crossing is enough for small parties",
-     "src": "assert solve_river_crossing(1, 1, 2) == [(1, 1)]\nassert solve_river_crossing(0, 2, 2) == [(0, 2)]\nassert solve_river_crossing(2, 2, 4) == [(2, 2)]"
+     "name": "moves are legal and land on the target",
+     "src": "def _apply(value, move):\n    if move == \"double\":\n        return value * 2\n    if move == \"inc\":\n        return value + 1\n    if move == \"dec\":\n        return value - 1\n    raise AssertionError(\"unknown move %r\" % (move,))\n\n\nfor start, target in [(1, 1), (1, 3), (1, 11), (3, 0), (0, 7), (2, 9), (7, 2), (1, 20), (4, 13), (6, 6)]:\n    for extra in (0, 1, 3):\n        limit = {(1, 1): 0, (1, 3): 2, (1, 11): 5, (3, 0): 3, (0, 7): 5, (2, 9): 3, (7, 2): 5, (1, 20): 5, (4, 13): 4, (6, 6): 0}[(start, target)] + extra\n        moves = depth_limited_search(start, target, limit)\n        assert moves is not None, \\\n            \"(%d -> %d) has a solution within %d moves\" % (start, target, limit)\n        value = start\n        for move in moves:\n            value = _apply(value, move)\n        assert value == target, \\\n            \"%r took %d to %d, not %d\" % (moves, start, value, target)"
     },
     {
-     "name": "crossings are legal and land everyone safely",
-     "src": "def _check(total_m, total_c, capacity, moves):\n    m, c, boat = total_m, total_c, 0\n    for dm, dc in moves:\n        assert dm >= 0 and dc >= 0 and 1 <= dm + dc <= capacity, \\\n            \"illegal boat load %r\" % ((dm, dc),)\n        assert not (dm and dm < dc), \"boat load %r is unsafe\" % ((dm, dc),)\n        if boat == 0:\n            assert dm <= m and dc <= c, \"not enough people on the left bank\"\n            m, c = m - dm, c - dc\n        else:\n            assert dm <= total_m - m and dc <= total_c - c, \\\n                \"not enough people on the right bank\"\n            m, c = m + dm, c + dc\n        boat = 1 - boat\n        for bm, bc in ((m, c), (total_m - m, total_c - c)):\n            assert not (bm and bm < bc), \\\n                \"bank (%d, %d) is unsafe after %r\" % (bm, bc, (dm, dc))\n    assert (m, c, boat) == (0, 0, 1), \\\n        \"ended with %d missionaries and %d cannibals on the left\" % (m, c)\n\n\nfor total_m, total_c, capacity in [(3, 3, 2), (3, 3, 3), (2, 2, 2), (1, 1, 1), (4, 4, 2), (4, 4, 3), (5, 5, 3), (5, 5, 2), (0, 3, 2)]:\n    moves = solve_river_crossing(total_m, total_c, capacity)\n    if moves is None:\n        continue\n    _check(total_m, total_c, capacity, [tuple(x) for x in moves])"
+     "name": "the depth limit is respected",
+     "src": "for start, target in [(1, 1), (1, 3), (1, 11), (3, 0), (0, 7), (2, 9), (7, 2), (1, 20), (4, 13), (6, 6)]:\n    for extra in (0, 1, 2, 4):\n        limit = {(1, 1): 0, (1, 3): 2, (1, 11): 5, (3, 0): 3, (0, 7): 5, (2, 9): 3, (7, 2): 5, (1, 20): 5, (4, 13): 4, (6, 6): 0}[(start, target)] + extra\n        moves = depth_limited_search(start, target, limit)\n        assert len(moves) <= limit, \\\n            \"limit %d but got %d moves for %d -> %d\" % (\n                limit, len(moves), start, target)"
     },
     {
-     "name": "schedules are shortest",
-     "src": "for (total_m, total_c, capacity), best in {(3, 3, 2): 11, (3, 3, 3): 5, (2, 2, 2): 5, (1, 1, 1): None, (4, 4, 2): None, (4, 4, 3): 9, (5, 5, 3): 11, (5, 5, 2): None, (0, 3, 2): 3}.items():\n    moves = solve_river_crossing(total_m, total_c, capacity)\n    label = \"(%d, %d, %d)\" % (total_m, total_c, capacity)\n    if best is None:\n        assert moves is None, \"%s is impossible but got %r\" % (label, moves)\n        continue\n    assert moves is not None, \"%s has a solution\" % label\n    assert len(moves) == best, \"%s took %d crossings, optimum is %d\" % (\n        label, len(moves), best)"
+     "name": "None exactly when the target is deeper than the limit",
+     "src": "for (start, target), best in {(1, 1): 0, (1, 3): 2, (1, 11): 5, (3, 0): 3, (0, 7): 5, (2, 9): 3, (7, 2): 5, (1, 20): 5, (4, 13): 4, (6, 6): 0}.items():\n    for limit in range(0, best):\n        assert depth_limited_search(start, target, limit) is None, \\\n            \"%d -> %d needs %d moves, so limit %d must fail\" % (\n                start, target, best, limit)\n    assert depth_limited_search(start, target, best) is not None, \\\n        \"%d -> %d should be found at limit %d\" % (start, target, best)"
     },
     {
-     "name": "the classic instances",
-     "src": "assert len(solve_river_crossing(3, 3, 2)) == 11\nassert solve_river_crossing(4, 4, 2) is None\nassert solve_river_crossing(4, 4, 3) is not None"
+     "name": "iterative deepening returns a shortest sequence",
+     "src": "def _apply(value, move):\n    if move == \"double\":\n        return value * 2\n    if move == \"inc\":\n        return value + 1\n    return value - 1\n\n\nfor (start, target), best in {(1, 1): 0, (1, 3): 2, (1, 11): 5, (3, 0): 3, (0, 7): 5, (2, 9): 3, (7, 2): 5, (1, 20): 5, (4, 13): 4, (6, 6): 0}.items():\n    moves = iterative_deepening_search(start, target)\n    assert moves is not None, \"(%d -> %d) is always reachable\" % (start, target)\n    assert len(moves) == best, \\\n        \"%d -> %d solved in %d moves, shortest is %d\" % (\n            start, target, len(moves), best)\n    value = start\n    for move in moves:\n        value = _apply(value, move)\n    assert value == target"
     },
     {
-     "name": "cannibals alone are never a problem",
-     "src": "for c in range(1, 6):\n    moves = solve_river_crossing(0, c, 2)\n    assert moves is not None, \"0 missionaries and %d cannibals is always fine\" % c\n    assert all(dm == 0 for dm, dc in moves)"
+     "name": "already-solved cases return an empty list, not None",
+     "src": "for value in (0, 1, 7, -4, 100):\n    assert iterative_deepening_search(value, value) == []\n    assert depth_limited_search(value, value, 5) == []"
     }
    ]
   }

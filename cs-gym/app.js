@@ -884,7 +884,7 @@ function wire() {
 async function start() {
   wire();
   setRuntime('busy', 'Loading problems…');
-  const response = await fetch('problems.json');
+  const response = await fetch('problems.json', { cache: 'no-store' });
   const payload = await response.json();
   state.tracks = payload.tracks;
   state.problems = payload.problems;
