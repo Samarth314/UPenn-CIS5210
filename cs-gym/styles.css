@@ -667,3 +667,19 @@ pre.stdout.err { color: #ffb4b4; border-color: rgba(248, 113, 113, 0.3); }
   .brand { min-width: 0; }
   .save-state { display: none; }
 }
+
+/* ---------------------------------------------------- Monaco (VS Code) */
+
+.monaco-host {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+/* Monaco replaces the gutter and the textarea once it has loaded.  If the
+   CDN is unreachable the class is never added and the original editor
+   stays, so the gym still works offline. */
+.editor.monaco .gutter,
+.editor.monaco .code-scroll { display: none; }
+.editor.monaco .monaco-host { display: block; }
+.editor.monaco { background: #1e1e1e; }

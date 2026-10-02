@@ -15,6 +15,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROGRESS = os.path.join(HERE, "progress.json")
 MAX_BODY = 8 * 1024 * 1024
+ASSET_VERSION = "monaco1"
 
 
 def load_progress():
@@ -52,6 +53,7 @@ def merge_progress(old, new):
         "solved": sorted(solved),
         "code": code,
         "codeAt": code_at,
+        "reset_token": old.get("reset_token"),
     }
 
 
@@ -65,6 +67,11 @@ class GymHandler(SimpleHTTPRequestHandler):
             super().log_message(fmt, *args)
 
     def do_GET(self):
+        if self.path in ("/", ""):
+            self.send_response(302)
+            self.send_header("Location", "/?v=" + ASSET_VERSION)
+            self.end_headers()
+            return
         if self.path == "/progress":
             self._respond(200, json.dumps(load_progress()).encode())
             return
@@ -86,7 +93,14 @@ class GymHandler(SimpleHTTPRequestHandler):
         if not isinstance(payload, dict):
             self.send_error(400, "body is not an object")
             return
-        merged = merge_progress(load_progress(), payload)
+        current = load_progress()
+        token = current.get("reset_token")
+        if token is not None and payload.get("reset_token") != token:
+            # A page that loaded before the last reset.  Refuse the write
+            # rather than let it restore what was cleared.
+            self._respond(409, b'{"ok": false, "reason": "stale"}')
+            return
+        merged = merge_progress(current, payload)
         if os.path.exists(PROGRESS):
             shutil.copyfile(PROGRESS, PROGRESS + ".bak")
         tmp = PROGRESS + ".tmp"
@@ -102,11 +116,17 @@ class GymHandler(SimpleHTTPRequestHandler):
     # navigator.sendBeacon can only POST, so the unload flush lands here.
     do_POST = do_PUT
 
+    # Served files change under a running server while you work on the gym,
+    # so nothing here may be cached -- otherwise an edit to app.js only shows
+    # up after a manual hard refresh.
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, must-revalidate")
+        super().end_headers()
+
     def _respond(self, status, body):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 

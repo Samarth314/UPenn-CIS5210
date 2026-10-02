@@ -18,11 +18,18 @@ const BUILTINS = new Set([
   'set', 'sorted', 'str', 'sum', 'super', 'tuple', 'type', 'zip',
 ]);
 
+const GYM_ID = 'cs-gym-search2';
+const STORE_PREFIX = 'csgym:' + GYM_ID + ':';
+const MONACO_CDN =
+  'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/';
+
 const $ = (id) => document.getElementById(id);
 
 const el = {
   sidebar: $('sidebar'),
   briefBody: $('brief-body'),
+  editor: $('editor'),
+  monacoHost: $('monaco-host'),
   code: $('code'),
   highlight: $('highlight'),
   gutter: $('gutter'),
@@ -54,6 +61,7 @@ const state = {
   busy: false,
   versionLabel: '',
   startedAt: 0,
+  resetToken: null,
 };
 
 /* ------------------------------------------------------------- storage */
@@ -61,7 +69,7 @@ const state = {
 const store = {
   get(key, fallback) {
     try {
-      const raw = localStorage.getItem('csgym:' + key);
+      const raw = localStorage.getItem(STORE_PREFIX + key);
       return raw === null ? fallback : JSON.parse(raw);
     } catch (err) {
       return fallback;
@@ -69,7 +77,7 @@ const store = {
   },
   set(key, value) {
     try {
-      localStorage.setItem('csgym:' + key, JSON.stringify(value));
+      localStorage.setItem(STORE_PREFIX + key, JSON.stringify(value));
     } catch (err) {
       /* private mode, quota — the gym still works, it just forgets. */
     }
@@ -100,6 +108,7 @@ const sync = {
       updated: new Date().toISOString(),
       solved: Array.from(state.solved).sort(),
       last: store.get('last', null),
+      reset_token: state.resetToken,
       code,
       codeAt,
     };
@@ -111,10 +120,32 @@ const sync = {
       if (!res.ok) return null;
       const data = await res.json();
       this.available = true;
-      return data && typeof data === 'object' ? data : {};
+      const blob = data && typeof data === 'object' ? data : {};
+      const token = blob.reset_token || null;
+      /* A token we have not seen means progress was cleared on disk since
+         this browser last looked.  Drop what is here rather than merging it
+         back in, which is what made earlier resets undo themselves. */
+      if (token && token !== store.get('resetToken', null)) {
+        this.wipeLocal();
+        store.set('resetToken', token);
+      }
+      state.resetToken = token;
+      return blob;
     } catch (err) {
       return null;
     }
+  },
+
+  /* Wipe every key for this gym.  Used when the server reports a reset. */
+  wipeLocal() {
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.indexOf(STORE_PREFIX) === 0)
+        .forEach((k) => localStorage.removeItem(k));
+    } catch (err) {
+      /* nothing to do -- the merge below still adopts the server state */
+    }
+    state.solved.clear();
   },
 
   /* Merge a saved blob into localStorage.  Per problem, the newer copy wins,
@@ -314,13 +345,84 @@ function onEditorKeydown(event) {
   }
 }
 
+let monacoEditor = null;
+
+/* One accessor pair for the editor contents, so the rest of the app does not
+   care whether Monaco loaded or the textarea fallback is in play. */
+
+function getCode() {
+  return monacoEditor ? monacoEditor.getValue() : el.code.value;
+}
+
+function setCode(text) {
+  if (monacoEditor) {
+    monacoEditor.setValue(text);
+    monacoEditor.setScrollTop(0);
+    return;
+  }
+  el.code.value = text;
+  paintEditor();
+  el.code.scrollTop = 0;
+}
+
+function loadMonaco() {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = MONACO_CDN + 'vs/loader.js';
+    script.onerror = () => resolve(false);
+    script.onload = () => {
+      window.MonacoEnvironment = {
+        getWorkerUrl() {
+          const src = "self.MonacoEnvironment={baseUrl:'" + MONACO_CDN + "'};"
+            + "importScripts('" + MONACO_CDN
+            + "vs/base/worker/workerMain.js');";
+          return URL.createObjectURL(
+            new Blob([src], { type: 'text/javascript' }));
+        },
+      };
+      window.require.config({ paths: { vs: MONACO_CDN + 'vs' } });
+      window.require(['vs/editor/editor.main'], () => {
+        monacoEditor = window.monaco.editor.create(el.monacoHost, {
+          value: '',
+          language: 'python',
+          theme: 'vs-dark',
+          automaticLayout: true,
+          fontSize: 13,
+          lineHeight: 20,
+          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, '
+            + 'Consolas, monospace',
+          tabSize: 4,
+          insertSpaces: true,
+          rulers: [79],
+          minimap: { enabled: true },
+          scrollBeyondLastLine: false,
+          renderWhitespace: 'selection',
+          cursorBlinking: 'smooth',
+          smoothScrolling: true,
+          padding: { top: 12, bottom: 12 },
+          bracketPairColorization: { enabled: true },
+          scrollbar: { verticalScrollbarSize: 11, horizontalScrollbarSize: 11 },
+        });
+        el.editor.classList.add('monaco');
+        monacoEditor.onDidChangeModelContent(() => scheduleSave());
+        monacoEditor.addCommand(
+          window.monaco.KeyMod.CtrlCmd | window.monaco.KeyCode.Enter,
+          () => runTests());
+        resolve(true);
+      }, () => resolve(false));
+    };
+    document.head.appendChild(script);
+  });
+}
+
 let saveTimer = null;
 
 function saveCode() {
   if (!state.current) return;
   const id = state.current.id;
-  if (store.get('code:' + id, null) === el.code.value) return;
-  store.set('code:' + id, el.code.value);
+  const value = getCode();
+  if (store.get('code:' + id, null) === value) return;
+  store.set('code:' + id, value);
   store.set('codeAt:' + id, Date.now());
   sync.push();
 }
@@ -424,9 +526,7 @@ function selectProblem(id) {
   store.set('last', id);
   if (location.hash.slice(1) !== id) location.hash = id;
   const saved = store.get('code:' + id, null);
-  el.code.value = saved === null ? p.starter + '\n' : saved;
-  paintEditor();
-  el.code.scrollTop = 0;
+  setCode(saved === null ? p.starter + '\n' : saved);
   setView('brief');
   renderSidebar();
   resetConsole();
@@ -563,7 +663,7 @@ async function runCode() {
   saveCode();
   setBusy(true, 'Running your code');
   try {
-    const data = await ask('run', { code: el.code.value }, RUN_TIMEOUT);
+    const data = await ask('run', { code: getCode() }, RUN_TIMEOUT);
     el.consoleTitle.textContent = 'Output';
     const parts = [];
     if (data.output) parts.push('<pre class="stdout">' + esc(data.output) + '</pre>');
@@ -596,7 +696,7 @@ async function runTests() {
   try {
     const data = await ask(
       'test',
-      { code: el.code.value, tests: problem.tests },
+      { code: getCode(), tests: problem.tests },
       TEST_TIMEOUT,
     );
     renderTestResults(problem, data);
@@ -661,7 +761,7 @@ async function runStyle() {
   saveCode();
   setBusy(true, 'Checking style');
   try {
-    const data = await ask('style', { code: el.code.value }, STYLE_TIMEOUT);
+    const data = await ask('style', { code: getCode() }, STYLE_TIMEOUT);
     el.consoleTitle.textContent = 'PEP 8 (pycodestyle)';
     if (!data.problems.length) {
       el.consoleBody.innerHTML = '<div class="summary pass">'
@@ -753,8 +853,7 @@ function wire() {
   el.btnReset.addEventListener('click', () => {
     if (!state.current) return;
     if (!window.confirm('Replace the editor with the starter code?')) return;
-    el.code.value = state.current.starter + '\n';
-    paintEditor();
+    setCode(state.current.starter + '\n');
     saveCode();
   });
   window.addEventListener('hashchange', () => {
@@ -775,7 +874,7 @@ function wire() {
   });
   document.addEventListener('keydown', (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key === 'Enter'
-        && document.activeElement !== el.code) {
+        && !el.editor.contains(document.activeElement)) {
       event.preventDefault();
       runTests();
     }
@@ -801,6 +900,7 @@ async function start() {
     el.saveState.className = 'save-state show warn';
     el.saveState.title = 'Run serve.py to mirror progress to cs-gym/progress.json';
   }
+  await loadMonaco();
   renderProgress();
 
   const wanted = location.hash.slice(1) || store.get('last', null)
