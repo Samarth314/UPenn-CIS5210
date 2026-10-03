@@ -52,6 +52,7 @@
   "weighted-grid-path": 1788847436961
  },
  "last": "weighted-grid-path",
+ "reset_token": null,
  "solved": [
   "cross-out",
   "does-it-overestimate",
@@ -71,6 +72,6 @@
   "uniform-cost-grid",
   "weighted-grid-path"
  ],
- "updated": "2026-09-08T06:04:15.589Z",
+ "updated": "2026-10-03T19:12:54.047Z",
  "version": 1
 }
