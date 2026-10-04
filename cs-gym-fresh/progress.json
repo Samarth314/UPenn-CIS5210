@@ -1,9 +1,15 @@
 {
- "code": {},
- "codeAt": {},
- "last": null,
+ "code": {
+  "iterative-deepening": "def depth_limited_search(start, target, limit):\n    \n    if limit == 0:\n        if start == target:\n            pass\n        return\n    \n    pass\n\n\ndef iterative_deepening_search(start, target):\n    pass\n",
+  "placement-counting": "def num_placements_all(n, k):\n    pass\n\n\ndef num_placements_one_per_row(n):\n    pass\n\n\ndef num_placements_rooks(n):\n    pass\n"
+ },
+ "codeAt": {
+  "iterative-deepening": 1790986687921,
+  "placement-counting": 1790986320028
+ },
+ "last": "iterative-deepening",
  "reset_token": "437a45e20bea6596",
  "solved": [],
- "updated": null,
+ "updated": "2026-10-03T00:46:27.643Z",
  "version": 1
 }
