@@ -1,12 +1,9 @@
 {
- "code": {
-  "grid-cells": "def grid_cells(n):\n    pass\n"
- },
- "codeAt": {
-  "grid-cells": 1789972828361
- },
- "last": "sudoku-complete",
+ "code": {},
+ "codeAt": {},
+ "last": null,
+ "reset_token": "a16b32692f685594",
  "solved": [],
- "updated": "2026-09-21T06:40:28.961Z",
+ "updated": null,
  "version": 1
 }

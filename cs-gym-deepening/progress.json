@@ -1,25 +1,9 @@
 {
- "code": {
-  "all-shortest-flips": "from collections import deque\n\ndef all_shortest_flips(start, target, dead):\n    \n    if start == target:\n        return [[]]\n    \n    if start in dead or target in dead:\n        return []\n        \n    directions = \"01\"\n    solutions = []\n    \n    def dfs_tree(curr_word, curr_moves, curr_depth, best_depth, limit):\n        \n        if curr_depth == limit:\n            if curr_word == target:\n                solutions.append(curr_moves)\n                \n        for i in range(0, len(curr_word)):\n            for letter in directions:\n                if letter == curr_word[i]:\n                    continue\n                \n                mod_word = curr_word[:i] + letter + curr_word[(i+1):]\n                if mod_word in dead:\n                    continue\n                next_depth = curr_depth+1\n                if mod_word in best_depth and best_depth[mod_word] < next_depth:\n                    continue\n                best_depth[mod_word] = next_depth\n                \n                dfs_tree(mod_word, curr_moves+[i], next_depth, best_depth, limit)\n    \n                \n        \n    limit_var = 0\n    while limit_var < float('inf'):\n        dfs_tree(start, [], 0, {}, limit_var)\n        if solutions:\n            return solutions\n            \n        limit_var += 1    \n    return []",
-  "coin-steps": "from collections import deque\n\ndef coin_steps(n):\n    \n    queue = deque()\n    visited_set = set()\n    \n    coins = [4, 3, 1]\n    \n    queue.append((n, 0))\n    \n    while queue:\n        curr_sum, curr_coins = queue.popleft()\n        if curr_sum in visited_set:\n            continue\n            \n        visited_set.add(curr_sum)\n        if curr_sum == 0:\n            return curr_coins\n            \n        for coin in coins:\n            if curr_sum - coin >= 0:\n                queue.append((curr_sum - coin, curr_coins+1))\n                pass\n            else:\n                continue\n        \n    \n    \n    return 0\n",
-  "jug-pours": "from collections import deque\n\ndef jug_pours(cap_a, cap_b, target):\n    \n    if target == 0:\n        return 0\n    if target > max(cap_a, cap_b):\n        return None\n    \n    solutions = []\n    \n    def bfs_tree(jug1_limit, jug2_limit, limit):\n        \n        queue = deque()\n        visited = {(0, 0)}\n        \n        queue.append((0, 0, 0, 0))\n        \n        while queue:\n            curr_1, curr_2, curr_depth, curr_moves = queue.popleft()\n            \n            if curr_depth == limit:\n                if curr_1 == target or curr_2 == target:\n                    solutions.append(curr_moves)\n                continue\n            \n            next_states = []\n            \n            # move 1 - fill either jug completely\n            if curr_1 != jug1_limit:\n                next_states.append((jug1_limit, curr_2))\n            if curr_2 != jug2_limit:\n                next_states.append((curr_1, jug2_limit))\n            \n            # move 2 - empty either jug completely\n            if curr_1 > 0:\n                next_states.append((0, curr_2))\n            if curr_2 > 0:\n                next_states.append((curr_1, 0))\n            \n            # move 3 - pour until the source empties or the destination fills\n            pour = min(curr_1, jug2_limit - curr_2)\n            if pour > 0:\n                next_states.append((curr_1 - pour, curr_2 + pour))\n            \n            pour = min(curr_2, jug1_limit - curr_1)\n            if pour > 0:\n                next_states.append((curr_1 + pour, curr_2 - pour))\n            \n            for state in next_states:\n                if state in visited:\n                    continue\n                visited.add(state)\n                queue.append((state[0], state[1], curr_depth + 1, curr_moves + 1))\n    \n    limit_var = 0\n    max_limit = cap_a * cap_b + 1\n    while limit_var <= max_limit:\n        bfs_tree(cap_a, cap_b, limit_var)\n        if solutions:\n            return solutions[0]\n        limit_var += 1\n    return None",
-  "ladder-length": "from collections import deque\n\ndef ladder_length(start, target, words):\n    \n    if start == target:\n        return 0\n    directions = \"abcdefghijklmnopqrstuvwxyz\"\n    solutions = []\n    \n    def bfs_tree(word, moves, limit):\n        queue = deque()\n        visited_set = set()\n        queue.append((word, moves, 0))\n        \n        while queue:\n            curr_word, curr_moves, curr_depth = queue.popleft()\n            \n            if curr_word in visited_set:\n                continue\n            \n            visited_set.add(curr_word)\n            \n            if curr_depth == limit:\n                if curr_word == target:\n                    solutions.append(curr_moves)\n                continue\n                \n            for i in range(0, len(curr_word)):\n                for letter in directions:\n                    if letter == curr_word[i]:\n                        continue\n                        \n                    mod_word = curr_word[:i] + letter + curr_word[(i+1):]\n                    if mod_word not in words:\n                        continue\n                        \n                    queue.append((mod_word, curr_moves+1, curr_depth+1))\n    \n    limit_var = 0\n    max_limit = len(words) + 1\n    while limit_var <= max_limit:\n        bfs_tree(start, 0, limit_var)\n        if solutions:\n            return solutions[0]\n        limit_var += 1\n    \n    return None"
- },
- "codeAt": {
-  "all-shortest-flips": 1789780196783,
-  "coin-steps": 1789756434771,
-  "jug-pours": 1789784332571,
-  "ladder-length": 1789758881051
- },
- "last": "jug-pours",
- "solved": [
-  "all-shortest-flips",
-  "coin-steps",
-  "height-and-max-leaf",
-  "jug-pours",
-  "ladder-length",
-  "nodes-and-leaves"
- ],
- "updated": "2026-09-19T02:18:54.424Z",
+ "code": {},
+ "codeAt": {},
+ "last": null,
+ "reset_token": "8d4d7f3212975fc5",
+ "solved": [],
+ "updated": null,
  "version": 1
 }
