@@ -2155,6 +2155,8 @@ TRACKS = [
      "Figure 5.7 as Python, checked leaf by leaf."),
     ("Homework-Style Games",
      "Game classes shaped like DominoesGame, searched with get_best_move."),
+    ("From the Quiz",
+     "Questions lifted from the course quizzes, stated as they were asked."),
 ]
 
 
@@ -2553,6 +2555,290 @@ for board, limit, want, mistakes in CASES:
                                      % (limit, board, got, MESSAGES[name]))
     assert got == want, (board, limit, got, want)
 """, CASES=FREE_CASES),
+    ],
+)
+
+
+def _ab_search(node, depth, alpha, beta):
+    """Reference alpha-beta, used to compute the expected answers below."""
+    children = node.get("children")
+    if depth == 0 or node["type"] == "leaf" or not children:
+        return [node["value"], 1]
+    if node["type"] == "max":
+        value, evals = float("-inf"), 0
+        for child in children:
+            child_value, child_evals = _ab_search(child, depth - 1, alpha, beta)
+            evals += child_evals
+            value = max(value, child_value)
+            alpha = max(alpha, value)
+            if alpha >= beta:
+                break
+        return [value, evals]
+    value, evals = float("inf"), 0
+    for child in children:
+        child_value, child_evals = _ab_search(child, depth - 1, alpha, beta)
+        evals += child_evals
+        value = min(value, child_value)
+        beta = min(beta, value)
+        if alpha >= beta:
+            break
+    return [value, evals]
+
+
+def _ab_expected(node, depth):
+    return _ab_search(node, depth, float("-inf"), float("inf"))
+
+
+def _minimax_value(node, depth):
+    """Plain minimax, to confirm pruning never changes the value."""
+    children = node.get("children")
+    if depth == 0 or node["type"] == "leaf" or not children:
+        return node["value"]
+    scores = [_minimax_value(c, depth - 1) for c in children]
+    return max(scores) if node["type"] == "max" else min(scores)
+
+
+def _leaf(value):
+    return {"type": "leaf", "value": value}
+
+
+def _node(kind, children, value=0):
+    return {"type": kind, "value": value, "children": children}
+
+
+def _random_tree(rng, depth, kind):
+    if depth == 0:
+        return _leaf(rng.randint(-9, 9))
+    children = [_random_tree(rng, depth - 1, "min" if kind == "max" else "max")
+                for _ in range(rng.randint(1, 3))]
+    return _node(kind, children, rng.randint(-9, 9))
+
+
+_AB_EXAMPLE = _node("max", [
+    _node("min", [_leaf(3), _leaf(5)]),
+    _node("min", [_leaf(6), _leaf(2)]),
+    _node("min", [_leaf(1), _leaf(8)]),
+])
+
+_AB_ORDER = _node("max", [
+    _node("min", [_leaf(5), _leaf(4), _leaf(3)]),
+    _node("min", [_leaf(1), _leaf(9), _leaf(9)]),
+])
+
+import random as _ab_random
+_AB_RNG = _ab_random.Random(20260916)
+_AB_CASES = []
+for _kind in ("max", "min"):
+    for _d in (1, 2, 3):
+        _t = _random_tree(_AB_RNG, _d, _kind)
+        for _limit in (0, _d, _d + 1):
+            _AB_CASES.append((_t, _limit, _ab_expected(_t, _limit)))
+
+_AB_EXAMPLE_OUT = _ab_expected(_AB_EXAMPLE, 2)
+_AB_ORDER_OUT = _ab_expected(_AB_ORDER, 2)
+
+
+problem(
+    id="alphabeta-dict-tree",
+    track="From the Quiz",
+    title="Alpha-Beta on a Dictionary Tree",
+    difficulty="medium",
+    points=20,
+    blurb="The quiz 4 question: alpha-beta over nested dicts, counting evaluations.",
+    statement="""
+<p>Implement alpha-beta pruning: an optimisation of minimax that carries two
+bounds &mdash; <strong>alpha</strong>, the best value the maximiser can
+guarantee, and <strong>beta</strong>, the best value the minimiser can
+guarantee &mdash; and skips branches that cannot affect the final decision.</p>
+
+<pre class="sig"><code>def alphabeta(node, depth):</code></pre>
+
+<p>The search starts with <code>alpha = -infinity</code> and
+<code>beta = +infinity</code> and returns a two-element sequence (list or
+tuple) <code>[value, num_evals]</code>:</p>
+
+<ul>
+  <li><strong>value</strong> &mdash; the minimax value of the node, identical
+      to what plain minimax computes.</li>
+  <li><strong>num_evals</strong> &mdash; how many terminal evaluations were
+      performed. One happens every time the base case fires. Pruned subtrees
+      are never evaluated, so this measures what the pruning saved, and it is
+      checked exactly &mdash; your pruning has to match.</li>
+</ul>
+
+<h3>Tree format</h3>
+
+<p>The game tree is plain nested dictionaries. Every node has:</p>
+<ul>
+  <li><code>"type"</code> &mdash; <code>"max"</code>, <code>"min"</code> or
+      <code>"leaf"</code>.</li>
+  <li><code>"value"</code> &mdash; a number, present on every node. On a leaf
+      it is the exact utility; on an internal node it is the heuristic to use
+      if the depth limit stops the search there.</li>
+  <li><code>"children"</code> &mdash; a list of child nodes. Internal nodes
+      only; leaves have no <code>"children"</code> key.</li>
+</ul>
+
+<h3>The algorithm, exactly</h3>
+
+<p><code>num_evals</code> depends on following this precisely:</p>
+<ul>
+  <li><strong>Base case</strong> &mdash; if <code>depth == 0</code>, the type
+      is <code>"leaf"</code>, or the node has no children (key missing or the
+      list empty), that is <strong>one</strong> terminal evaluation and the
+      value is <code>node["value"]</code>.</li>
+  <li><strong>MAX node</strong> &mdash; start at <code>float('-inf')</code>.
+      Visit the children <strong>strictly left to right</strong>; for each,
+      recurse with <code>depth - 1</code> and the current alpha and beta, then
+      <code>value = max(value, child_value)</code> and
+      <code>alpha = max(alpha, value)</code>. If <code>alpha &gt;= beta</code>,
+      stop &mdash; do not visit the remaining children.</li>
+  <li><strong>MIN node</strong> &mdash; symmetric: start at
+      <code>float('inf')</code>, use <code>min</code>, tighten
+      <code>beta</code>, and stop on the same <code>alpha &gt;= beta</code>.</li>
+  <li><code>num_evals</code> for an internal node is the sum over the children
+      <em>actually visited</em>.</li>
+</ul>
+
+<p>A recursive helper <code>search(node, depth, alpha, beta)</code> returning
+<code>[value, num_evals]</code>, called from <code>alphabeta()</code> with the
+infinite bounds, is the shape to aim for.</p>
+""",
+    examples="""
+The tree
+
+          MAX
+        /  |  \\\\
+      MIN MIN MIN
+      /\\\\   /\\\\   /\\\\
+     3  5 6  2 1  8
+
+as nested dicts:
+
+>>> tree = {"type": "max", "value": 0, "children": [
+...     {"type": "min", "value": 0, "children": [
+...         {"type": "leaf", "value": 3}, {"type": "leaf", "value": 5}]},
+...     {"type": "min", "value": 0, "children": [
+...         {"type": "leaf", "value": 6}, {"type": "leaf", "value": 2}]},
+...     {"type": "min", "value": 0, "children": [
+...         {"type": "leaf", "value": 1}, {"type": "leaf", "value": 8}]}]}
+>>> alphabeta(tree, 2)
+[3, 5]
+
+Its value is 3, and only 5 of the 6 leaves are evaluated: the first branch
+gives 3 so alpha becomes 3, then the third branch's first leaf 1 drives its
+beta to 1, which is <= alpha, so the leaf 8 is pruned.
+
+>>> alphabeta({"type": "leaf", "value": 7}, 3)
+[7, 1]
+>>> alphabeta(tree, 0)
+[0, 1]
+""",
+    starter="""
+def alphabeta(node, depth):
+    pass
+""",
+    hints=[
+        "Write search(node, depth, alpha, beta) returning [value, num_evals], "
+        "and have alphabeta() call it with float('-inf') and float('inf').",
+        "The base case is three conditions joined by or: depth == 0, the type "
+        "is 'leaf', or node.get('children') is missing or empty. All three "
+        "return [node['value'], 1].",
+        "Accumulate num_evals as you go, adding each visited child's count "
+        "before you test alpha >= beta -- a branch that prunes afterwards "
+        "still performed the evaluations it already did.",
+        "Break out of the loop on alpha >= beta rather than returning early "
+        "with a different count; the value and the running total are both "
+        "already correct at that point.",
+    ],
+    solution="""
+def search(node, depth, alpha, beta):
+    children = node.get("children")
+    if depth == 0 or node["type"] == "leaf" or not children:
+        return [node["value"], 1]
+
+    if node["type"] == "max":
+        value, num_evals = float("-inf"), 0
+        for child in children:
+            child_value, child_evals = search(child, depth - 1, alpha, beta)
+            num_evals += child_evals
+            value = max(value, child_value)
+            alpha = max(alpha, value)
+            if alpha >= beta:
+                break
+        return [value, num_evals]
+
+    value, num_evals = float("inf"), 0
+    for child in children:
+        child_value, child_evals = search(child, depth - 1, alpha, beta)
+        num_evals += child_evals
+        value = min(value, child_value)
+        beta = min(beta, value)
+        if alpha >= beta:
+            break
+    return [value, num_evals]
+
+
+def alphabeta(node, depth):
+    return search(node, depth, float("-inf"), float("inf"))
+""",
+    tests=[
+        T("the worked example returns [3, 5]", """
+tree = @@TREE@@
+got = alphabeta(tree, 2)
+assert list(got) == @@OUT@@, "expected %r, got %r" % (@@OUT@@, got)
+assert len(got) == 2, "return a two-element sequence"
+""", TREE=_AB_EXAMPLE, OUT=_AB_EXAMPLE_OUT),
+        T("the three base cases each count as one evaluation", """
+assert list(alphabeta({"type": "leaf", "value": 7}, 3)) == [7, 1]
+assert list(alphabeta({"type": "max", "value": 4, "children": [
+    {"type": "leaf", "value": 1}]}, 0)) == [4, 1], "depth 0 uses node['value']"
+assert list(alphabeta({"type": "max", "value": 9}, 5)) == [9, 1], \\
+    "a node with no 'children' key is a terminal evaluation"
+assert list(alphabeta({"type": "min", "value": 2, "children": []}, 5)) == [2, 1], \\
+    "an empty children list is a terminal evaluation too"
+"""),
+        T("children are visited strictly left to right", """
+tree = @@TREE@@
+got = alphabeta(tree, 2)
+assert list(got) == @@OUT@@, (
+    "expected %r, got %r -- visiting children right to left, or failing to "
+    "stop on alpha >= beta, changes num_evals" % (@@OUT@@, got))
+""", TREE=_AB_ORDER, OUT=_AB_ORDER_OUT),
+        T("the value always matches plain minimax", """
+def minimax(node, depth):
+    children = node.get("children")
+    if depth == 0 or node["type"] == "leaf" or not children:
+        return node["value"]
+    scores = [minimax(c, depth - 1) for c in children]
+    return max(scores) if node["type"] == "max" else min(scores)
+
+
+for tree, limit, want in @@CASES@@:
+    got = alphabeta(tree, limit)
+    assert got[0] == minimax(tree, limit), (
+        "pruning changed the value: got %r, minimax says %r"
+        % (got[0], minimax(tree, limit)))
+""", CASES=_AB_CASES),
+        T("num_evals matches a reference implementation exactly", """
+for tree, limit, want in @@CASES@@:
+    got = alphabeta(tree, limit)
+    assert list(got) == want, (
+        "depth %d: expected %r, got %r" % (limit, want, got))
+""", CASES=_AB_CASES),
+        T("num_evals never exceeds the leaves a full search would touch", """
+def full_evals(node, depth):
+    children = node.get("children")
+    if depth == 0 or node["type"] == "leaf" or not children:
+        return 1
+    return sum(full_evals(c, depth - 1) for c in children)
+
+
+for tree, limit, want in @@CASES@@:
+    got = alphabeta(tree, limit)
+    assert 1 <= got[1] <= full_evals(tree, limit), (
+        "num_evals %r is outside 1..%d" % (got[1], full_evals(tree, limit)))
+""", CASES=_AB_CASES),
     ],
 )
 
